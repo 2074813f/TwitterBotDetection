@@ -1,10 +1,4 @@
-package Util;
-
-import java.util.logging.Logger;
-
-import twitter4j.Twitter;
-import twitter4j.TwitterFactory;
-import twitter4j.conf.ConfigurationBuilder;
+package util;
 
 /**
  * Provides attempted setup of twitter instance auth.
