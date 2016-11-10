@@ -1,4 +1,4 @@
-package features;
+package accountProperties;
 
 import models.UserAccount;
 import models.UserFeatures;
