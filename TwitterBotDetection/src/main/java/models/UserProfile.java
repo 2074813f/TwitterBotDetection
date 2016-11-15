@@ -15,20 +15,19 @@ import twitter4j.User;
  * @author Adam
  *
  */
-public class UserAccount {
+public class UserProfile {
 	
 	private User user;
-	private boolean exists;
 	private List<Status> statuses;
 	
-	public UserAccount(User user, Status status) {
+	public UserProfile(User user, Status status) {
 		this.user = user;
 		
 		this.statuses = new ArrayList<Status>(25);
 		this.statuses.add(status);
 	}
 	
-	public UserAccount() {}
+	public UserProfile() {}
 	
 	public void addStatus(Status status) {
 		statuses.add(status);
@@ -38,12 +37,12 @@ public class UserAccount {
 	public boolean equals(Object obj) {
 		
 		// Check if an instance of UserAccount, return false if not.
-		if (!(obj instanceof UserAccount)) {
+		if (!(obj instanceof UserProfile)) {
 			return false;
 		}
 		
 		//Cast obj to UserAccount for comparison
-		UserAccount comp = (UserAccount) obj;
+		UserProfile comp = (UserProfile) obj;
 		
 		return user.getId() == comp.getUser().getId();
 	}
@@ -65,11 +64,5 @@ public class UserAccount {
 	}
 	public void setStatuses(List<Status> statuses) {
 		this.statuses = statuses;
-	}
-	public boolean getExists() {
-		return exists;
-	}
-	public void setExists(boolean exists) {
-		this.exists = exists;
 	}
 }

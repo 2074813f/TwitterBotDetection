@@ -1,6 +1,6 @@
 package accountProperties;
 
-import models.UserAccount;
+import models.UserProfile;
 import models.UserFeatures;
 import twitter4j.Twitter;
 
@@ -9,9 +9,9 @@ import twitter4j.Twitter;
  * @author Adam
  *
  */
-public class AccountExtractor {
+public class FeatureExtractor {
 	
-	public static UserFeatures extractFeatures(Twitter twitter, UserAccount user) {
+	public static UserFeatures extractFeatures(Twitter twitter, UserProfile user) {
 		
 		UserFeatures features = new UserFeatures();
 		

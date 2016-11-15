@@ -5,8 +5,9 @@ import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import accountProperties.AccountExtractor;
-import models.UserAccount;
+import accountProperties.AccountChecker;
+import accountProperties.FeatureExtractor;
+import models.UserProfile;
 import models.UserFeatures;
 import util.TwitterConfig;
 import twitter4j.Twitter;
@@ -22,23 +23,27 @@ public class Main {
 		Twitter twitter = TwitterConfig.authTwitter();
 		
 		//Read statuses from file.
-		List<UserAccount> users = DataCapture.ReadStatusFile(args[0]);
+		List<UserProfile> users = DataCapture.ReadStatusFile(args[0]);
 		
-		//Iterate over UserAccounts and grab timeline from twitter.
-		users.parallelStream()
-				.forEach(user -> DataCapture.AddTimeline(twitter, user));
+		//Remove inaccessible users.
+		users = AccountChecker.filter_accessible(twitter, users);
+		logger.info("Reduced to {} usable users.", users.size());
+		
+		//Get the timelines for each user from twitter.
+		//users.parallelStream()
+		//		.forEach(user -> DataCapture.AddTimeline(twitter, user));
 		
 		//Persist gathered timeline information to file
 		//TODO: change filename input either to runtime param or configured from base filename.
-		DataCapture.WriteUserAccountFile(users, "test_output.json");
+		//DataCapture.WriteUserAccountFile(users, "test_output.json");
 		
 		//Extract account features for each user
-		List<UserFeatures> features = new ArrayList<UserFeatures>();
-		features = users.parallelStream()
-				.map(e -> AccountExtractor.extractFeatures(twitter, e))
-				.collect(Collectors.toList());
+		//List<UserFeatures> features = new ArrayList<UserFeatures>();
+		//features = users.parallelStream()
+		//		.map(e -> AccountExtractor.extractFeatures(twitter, e))
+		//		.collect(Collectors.toList());
 		
-		logger.info("Extracted account features for {} users", features.size());
+		//logger.info("Extracted account features for {} users", features.size());
 
 	}
 

@@ -12,7 +12,7 @@ import org.apache.logging.log4j.Logger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import models.UserAccount;
+import models.UserProfile;
 import twitter4j.HttpResponseCode;
 import twitter4j.Status;
 import twitter4j.Twitter;
@@ -31,10 +31,10 @@ public class DataCapture {
 	
 	static Logger logger = LogManager.getLogger();
 	
-	public static List<UserAccount> ReadStatusFile(String filename) {
+	public static List<UserProfile> ReadStatusFile(String filename) {
 	
 		List<Status> tweets = new ArrayList<Status>();						//Set of statuses/tweets obtained from the file.
-		List<UserAccount> users = new ArrayList<UserAccount>();				//Set of users from file.
+		List<UserProfile> users = new ArrayList<UserProfile>();				//Set of users from file.
 		
 		/*Read in a file line by line, where each line is a status/tweet.
 		 *Extract distinct users from these statuses/tweets.
@@ -60,7 +60,7 @@ public class DataCapture {
 						users.get(index).addStatus(tweet);
 					}
 					else {
-						users.add(new UserAccount(newUser, tweet));
+						users.add(new UserProfile(newUser, tweet));
 					}
 				}
 				
@@ -80,11 +80,11 @@ public class DataCapture {
 		return users;
 	}
 	
-	public static void WriteUserAccountFile(List<UserAccount> users, String filename) {
+	public static void WriteUserAccountFile(List<UserProfile> users, String filename) {
 		
 		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
 			
-			for (UserAccount user : users) {
+			for (UserProfile user : users) {
 				//TODO: combine json representations of user and statuses and write to single line.
 				
 				ObjectMapper mapper = new ObjectMapper();
@@ -98,23 +98,26 @@ public class DataCapture {
 		}
 	}
 	
-	public static void AddTimeline(Twitter twitter, UserAccount user) {
+	/**
+	 * Get statuses from the timeline of a given user, and add to the list of statuses
+	 * for that user.
+	 * 
+	 * @param twitter
+	 * @param user
+	 */
+	public static void AddTimeline(Twitter twitter, UserProfile user) {
 		
 		//TODO: deal with rate limit.
 		try {
 			twitter.getUserTimeline(user.getUser().getId())
 				.forEach(result -> user.addStatus(result));
-			
-			//We successfully retrieved the timeline so the user must exist at time of capture.
-			user.setExists(true);
 		}
 		catch (TwitterException e) {
 			
 			// if user has protected tweets, or if they deleted their account, we note this.
 	        if (e.getStatusCode() == HttpResponseCode.UNAUTHORIZED ||
 	            e.getStatusCode() == HttpResponseCode.NOT_FOUND) {
-
-	        	user.setExists(false);
+	        	logger.error("User not found or inaccessible: {}", user.getUser().getId(), e);
 	        }
 	        else {
 				logger.error("Unknown error retrieving timeline for user: {}", user.getUser().getId(), e);
