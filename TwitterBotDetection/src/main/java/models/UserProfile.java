@@ -17,6 +17,7 @@ import twitter4j.User;
  */
 public class UserProfile {
 	
+	private String label;
 	private User user;
 	private List<Status> statuses;
 	
@@ -64,5 +65,11 @@ public class UserProfile {
 	}
 	public void setStatuses(List<Status> statuses) {
 		this.statuses = statuses;
+	}
+	public String getClassifierClass() {
+		return label;
+	}
+	public void setClassifierClass(String classifierClass) {
+		this.label = classifierClass;
 	}
 }

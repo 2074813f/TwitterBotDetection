@@ -1,14 +1,11 @@
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import accountProperties.AccountChecker;
-import accountProperties.FeatureExtractor;
+import models.LabelledUser;
 import models.UserProfile;
-import models.UserFeatures;
 import util.TwitterConfig;
 import twitter4j.Twitter;
 
@@ -23,10 +20,15 @@ public class Main {
 		Twitter twitter = TwitterConfig.authTwitter();
 		
 		//Read statuses from file.
-		List<UserProfile> users = DataCapture.ReadStatusFile(args[0]);
+		//List<UserProfile> users = DataCapture.readStatusFile(args[0]);
 		
 		//Remove inaccessible users.
-		users = AccountChecker.filter_accessible(twitter, users);
+		//users = AccountChecker.filter_accessible(twitter, users);
+		//logger.info("Reduced to {} usable users.", users.size());
+		
+		//FOR LABELLED
+		List<LabelledUser> classedUsers = DataCapture.readClassifiedFile(args[0]);
+		List<UserProfile> users = AccountChecker.filter_accessible_labelled(twitter, classedUsers);
 		logger.info("Reduced to {} usable users.", users.size());
 		
 		//Get the timelines for each user from twitter.

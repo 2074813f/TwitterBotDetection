@@ -12,6 +12,8 @@ import org.apache.logging.log4j.Logger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import accountProperties.AccountChecker;
+import models.LabelledUser;
 import models.UserProfile;
 import twitter4j.HttpResponseCode;
 import twitter4j.Status;
@@ -31,7 +33,17 @@ public class DataCapture {
 	
 	static Logger logger = LogManager.getLogger();
 	
-	public static List<UserProfile> ReadStatusFile(String filename) {
+	/**
+	 * Reads the statuses from a json file containing a twitter status
+	 * per line. For each status the user is read and the status associated
+	 * with that user.
+	 * 
+	 * If a status has no user associated with it, it is discarded.
+	 * 
+	 * @param filename - the file to process
+	 * @return - a list of UserProfiles based on the users found.
+	 */
+	public static List<UserProfile> readStatusFile(String filename) {
 	
 		List<Status> tweets = new ArrayList<Status>();						//Set of statuses/tweets obtained from the file.
 		List<UserProfile> users = new ArrayList<UserProfile>();				//Set of users from file.
@@ -40,7 +52,7 @@ public class DataCapture {
 		 *Extract distinct users from these statuses/tweets.
 		 */
 		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
-			logger.info("Reading from file...");	
+			logger.info("Reading from status file {}...", filename);	
 	
 			String line = reader.readLine();					//Current line.
 			
@@ -78,6 +90,58 @@ public class DataCapture {
 		}
 		
 		return users;
+	}
+	
+	/**
+	 * Reads and processes a file of a form where:
+	 * 	- Each line describes one user in the dataset.
+	 *  - Each line is formatted as follows:
+	 *  	<label> <user_id> <tweet_id_1> <tweet_id_2> ... <tweet_id_n>
+	 *  	- The <label> is either "bot", or "human", indicating the label the user received from the corresponding labeling method.
+	 *		- The <user_id> is the user's Twitter ID.
+	 *		- <tweet_id_1:n> is the status Ids for a user.
+	 * 
+	 * @param filename
+	 * @return - A list of LabelledUsers
+	 */
+	public static List<LabelledUser> readClassifiedFile(String filename) {
+		
+		List<LabelledUser> classedUsers = new ArrayList<LabelledUser>();	//Temp. set of users, to be populated as UserProfiles
+		
+		/* Read in a file line by line.
+		 * Read each user as a ClassifiedUser, which contains only ids
+		 * and not populated User or Status objects.
+		 */
+		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
+			logger.info("Reading from classified file {}...", filename);	
+	
+			String line = reader.readLine();								//Current line.
+			
+			while (line != null) {
+				String[] tokens = line.split(" ");
+				
+				LabelledUser newUser = new LabelledUser();
+				
+				newUser.setLabel(tokens[0]);
+				newUser.setUserId(Long.parseLong(tokens[1]));
+				
+				for (int i=2; i<tokens.length; i++) {
+					newUser.addStatus(Long.parseLong(tokens[i]));
+				}
+				
+				//Add user to temp. list.
+				classedUsers.add(newUser);
+				
+				line = reader.readLine();
+			}
+			
+			logger.info("Obtained {} labelled users.", classedUsers.size());
+		}
+		catch (IOException e) {
+			logger.error("Error reading file: ", e.toString());
+		}
+		
+		return classedUsers;
 	}
 	
 	public static void WriteUserAccountFile(List<UserProfile> users, String filename) {
