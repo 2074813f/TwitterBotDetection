@@ -1,8 +1,5 @@
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,14 +7,9 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import accountProperties.AccountChecker;
 import models.LabelledUser;
 import models.UserProfile;
-import twitter4j.HttpResponseCode;
 import twitter4j.Status;
-import twitter4j.Twitter;
 import twitter4j.TwitterException;
 import twitter4j.TwitterObjectFactory;
 import twitter4j.User;
@@ -72,7 +64,9 @@ public class DataCapture {
 						users.get(index).addStatus(tweet);
 					}
 					else {
-						users.add(new UserProfile(newUser, tweet));
+						List<Status> statuses = new ArrayList<Status>();
+						statuses.add(tweet);
+						users.add(new UserProfile(null, newUser, statuses));
 					}
 				}
 				
@@ -97,19 +91,19 @@ public class DataCapture {
 	 * 	- Each line describes one user in the dataset.
 	 *  - Each line is formatted as follows:
 	 *  	<label> <user_id> <tweet_id_1> <tweet_id_2> ... <tweet_id_n>
-	 *  	- The <label> is either "bot", or "human", indicating the label the user received from the corresponding labeling method.
-	 *		- The <user_id> is the user's Twitter ID.
-	 *		- <tweet_id_1:n> is the status Ids for a user.
+	 *  - <label>: either "bot", or "human", indicating the label the user received from the corresponding labeling method.
+	 *	- <user_id>: the user's Twitter ID.
+	 *	- <tweet_id_1:n>: the status Ids for a user.
 	 * 
 	 * @param filename
 	 * @return - A list of LabelledUsers
 	 */
-	public static List<LabelledUser> readClassifiedFile(String filename) {
+	public static List<LabelledUser> readLabelledFile(String filename) {
 		
-		List<LabelledUser> classedUsers = new ArrayList<LabelledUser>();	//Temp. set of users, to be populated as UserProfiles
+		List<LabelledUser> labelledUsers = new ArrayList<LabelledUser>();	//Temp. set of users, to be populated as UserProfiles
 		
 		/* Read in a file line by line.
-		 * Read each user as a ClassifiedUser, which contains only ids
+		 * Read each user as a LabeledUser, which contains only ids
 		 * and not populated User or Status objects.
 		 */
 		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
@@ -130,65 +124,18 @@ public class DataCapture {
 				}
 				
 				//Add user to temp. list.
-				classedUsers.add(newUser);
+				labelledUsers.add(newUser);
 				
 				line = reader.readLine();
 			}
 			
-			logger.info("Obtained {} labelled users.", classedUsers.size());
+			logger.info("Obtained {} labelled users.", labelledUsers.size());
 		}
 		catch (IOException e) {
 			logger.error("Error reading file: ", e.toString());
 		}
 		
-		return classedUsers;
-	}
-	
-	public static void WriteUserAccountFile(List<UserProfile> users, String filename) {
-		
-		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
-			
-			for (UserProfile user : users) {
-				//TODO: combine json representations of user and statuses and write to single line.
-				
-				ObjectMapper mapper = new ObjectMapper();
-
-				//Object to JSON in String
-				mapper.writeValue(new File(filename), user);
-			}
-		}
-		catch (IOException e) {
-			logger.error("Error writing to file: ", e.toString());
-		}
-	}
-	
-	/**
-	 * Get statuses from the timeline of a given user, and add to the list of statuses
-	 * for that user.
-	 * 
-	 * @param twitter
-	 * @param user
-	 */
-	public static void AddTimeline(Twitter twitter, UserProfile user) {
-		
-		//TODO: deal with rate limit.
-		try {
-			twitter.getUserTimeline(user.getUser().getId())
-				.forEach(result -> user.addStatus(result));
-		}
-		catch (TwitterException e) {
-			
-			// if user has protected tweets, or if they deleted their account, we note this.
-	        if (e.getStatusCode() == HttpResponseCode.UNAUTHORIZED ||
-	            e.getStatusCode() == HttpResponseCode.NOT_FOUND) {
-	        	logger.error("User not found or inaccessible: {}", user.getUser().getId(), e);
-	        }
-	        else {
-				logger.error("Unknown error retrieving timeline for user: {}", user.getUser().getId(), e);
-	        }
-
-		}
-		
+		return labelledUsers;
 	}
 
 }

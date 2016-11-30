@@ -25,6 +25,11 @@ public class LabelledUser {
 	public void addStatus(long status) {
 		statusIds.add(status);
 	}
+	
+	@Override
+	public int hashCode() {
+		return Long.hashCode(userId);
+	}
 
 	public String getLabel() {
 		return label;

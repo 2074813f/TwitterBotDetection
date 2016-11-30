@@ -21,14 +21,15 @@ public class UserProfile {
 	private User user;
 	private List<Status> statuses;
 	
-	public UserProfile(User user, Status status) {
+	public UserProfile(String label, User user, List<Status> statuses) {
+		this.label = label;
 		this.user = user;
-		
-		this.statuses = new ArrayList<Status>(25);
-		this.statuses.add(status);
+		this.statuses = statuses;
 	}
 	
-	public UserProfile() {}
+	public UserProfile() {
+		this.statuses = new ArrayList<Status>();
+	}
 	
 	public void addStatus(Status status) {
 		statuses.add(status);
@@ -66,10 +67,10 @@ public class UserProfile {
 	public void setStatuses(List<Status> statuses) {
 		this.statuses = statuses;
 	}
-	public String getClassifierClass() {
+	public String getLabel() {
 		return label;
 	}
-	public void setClassifierClass(String classifierClass) {
-		this.label = classifierClass;
+	public void setLabel(String label) {
+		this.label = label;
 	}
 }
