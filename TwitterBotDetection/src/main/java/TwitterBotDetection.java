@@ -4,8 +4,10 @@ import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.sql.SparkSession;
 
 import accountProperties.AccountChecker;
+import features.StatusClassifier;
 import models.LabelledUser;
 import models.UserProfile;
 import util.TwitterConfig;
@@ -13,11 +15,11 @@ import twitter4j.Status;
 import twitter4j.Twitter;
 import twitter4j.User;
 
-public class Main {
+public class TwitterBotDetection {
 	
 	public static void main(String[] args) {
 		
-		Logger logger = LogManager.getLogger();
+		Logger logger = LogManager.getLogger(TwitterBotDetection.class);
 		if (logger == null) System.exit(-1);
 		
 		//Get a twitter instance and attempt to authenticate with env variables.
@@ -57,6 +59,15 @@ public class Main {
 			UserProfile user = mappedUsers.get(userid);
 			if (user != null) user.addStatus(status);
 		});
+		
+		//Create the spark session.
+		SparkSession spark = SparkSession
+				.builder()
+				.appName("Example")
+				.config("spark.master", "local")
+				.getOrCreate();
+		
+		StatusClassifier.trainClassifier(spark, users);
 		
 		//Extract account features for each user
 		//List<UserFeatures> features = new ArrayList<UserFeatures>();
