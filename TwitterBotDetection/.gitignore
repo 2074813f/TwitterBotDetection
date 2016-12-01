@@ -1,7 +1,3 @@
 /.gradle/
 /bin/
 /build/
-
-/src/main/resources/honeypot.txt
-/src/main/resources/top10.json
-/src/main/resources/top100.json
