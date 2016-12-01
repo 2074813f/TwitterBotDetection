@@ -67,7 +67,7 @@ public class TwitterBotDetection {
 				.config("spark.master", "local")
 				.getOrCreate();
 		
-		StatusClassifier.trainClassifier(spark, users);
+		StatusClassifier.trainBayesClassifier(spark, users);
 		
 		//Extract account features for each user
 		//List<UserFeatures> features = new ArrayList<UserFeatures>();

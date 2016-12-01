@@ -22,10 +22,10 @@ import models.UserProfile;
 
 public class StatusClassifier {
 	
-	public static void trainClassifier(SparkSession spark, List<UserProfile> users) {
+	public static void trainBayesClassifier(SparkSession spark, List<UserProfile> users) {
 		
 		//Map UserProfiles to label:status for training.
-		//NOTE: converts human->0 else->1
+		//NOTE: converts human->0, else->1 (need double labels)
 		List<LabelledStatus> statuses = new ArrayList<LabelledStatus>();
 		users.forEach(user -> user.getStatuses()
 				.forEach(status -> statuses.add(
@@ -44,7 +44,7 @@ public class StatusClassifier {
 		Tokenizer tokenizer = new Tokenizer().setInputCol("statusText").setOutputCol("words");
 		Dataset<Row> wordDataFrame = tokenizer.transform(ds);
 
-		int numFeatures = 100;
+		int numFeatures = 20;
 		HashingTF hashingTF = new HashingTF()
 		  .setInputCol("words")
 		  .setOutputCol("rawFeatures")
@@ -59,14 +59,14 @@ public class StatusClassifier {
 		IDF idf = new IDF().setInputCol("rawFeatures").setOutputCol("features");
 		IDFModel idfModel = idf.fit(featurizedData);
 		Dataset<Row> rescaledData = idfModel.transform(featurizedData);
-		for (Row r : rescaledData.select("features", "label").takeAsList(3)) {
-		  SparseVector features = r.getAs(0);
-		  double label = r.getDouble(1);
-		  System.out.println(features);
-		  System.out.println(label);
-		}
+//		for (Row r : rescaledData.select("features", "label").takeAsList(3)) {
+//		  SparseVector features = r.getAs(0);
+//		  double label = r.getDouble(1);
+//		  System.out.println("label:" + label);
+//		  System.out.println("Features:" + features);
+//		}
 		
-		Dataset<Row>[] splits = rescaledData.randomSplit(new double[]{0.50, 0.50});
+		Dataset<Row>[] splits = rescaledData.randomSplit(new double[]{0.6, 0.4});
 		Dataset<Row> train = splits[0];
 		Dataset<Row> test = splits[1];
 		
@@ -80,5 +80,4 @@ public class StatusClassifier {
 				  .setMetricName("accuracy");
 		System.out.println("Accuracy = " + evaluator.evaluate(predictionAndLabels));
 	}
-
 }
