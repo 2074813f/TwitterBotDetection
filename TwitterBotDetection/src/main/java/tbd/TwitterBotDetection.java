@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.ml.classification.NaiveBayesModel;
 import org.apache.spark.sql.SparkSession;
 
 import accountProperties.AccountChecker;
@@ -14,7 +15,6 @@ import models.UserProfile;
 import util.TwitterConfig;
 import twitter4j.Status;
 import twitter4j.Twitter;
-import twitter4j.User;
 
 public class TwitterBotDetection {
 	
@@ -68,13 +68,7 @@ public class TwitterBotDetection {
 				.config("spark.master", "local")
 				.getOrCreate();
 		
-		StatusClassifier.trainBayesClassifier(spark, users);
-		
-		//Extract account features for each user
-		//List<UserFeatures> features = new ArrayList<UserFeatures>();
-		//features = users.parallelStream()
-		//		.map(e -> AccountExtractor.extractFeatures(twitter, e))
-		//		.collect(Collectors.toList());
+		//NaiveBayesModel model = StatusClassifier.trainBayesClassifier(spark, users);
 		
 		//logger.info("Extracted account features for {} users", features.size());
 

@@ -9,12 +9,13 @@ import twitter4j.Twitter;
  * @author Adam
  *
  */
-public class FeatureExtractor {
+public class ProfileClassifier {
 	
 	public static UserFeatures extractFeatures(Twitter twitter, UserProfile user) {
 		
 		UserFeatures features = new UserFeatures();
 		
+		//Get the id for the user
 		features.setId(user.getUser().getId());
 		
 		//Demographics
