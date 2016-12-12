@@ -1,6 +1,8 @@
 package features;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.http.HttpResponse;
@@ -15,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import models.GoogleSBBody;
 import models.GoogleSBClient;
 import models.GoogleSBThreatInfo;
+import models.GoogleSBMatch;
 
 public class URLChecker {
 	
@@ -22,14 +25,17 @@ public class URLChecker {
 	private String apiKey = System.getenv("GOOGLE_SB_KEY");
 	private ObjectMapper mapper = new ObjectMapper();
 	
-	public List<String> isSpamURLs(List<String> unknownURLs) {
+	//TODO: check <=500 URLs
+	public List<String> isSpamURLs(Collection<String> unknownURLs) {
 
 		HttpResponse response;
 		
 		//Build the components for the POST body, to be serialized.
 		GoogleSBClient client = new GoogleSBClient("aflemingtbd", "1.0");
+		//Initialize and populate threat info with urls.
 		GoogleSBThreatInfo threatInfo = new GoogleSBThreatInfo();
-		unknownURLs.stream().forEach(url -> threatInfo.addUrlEntry(url));
+		unknownURLs.forEach(url -> threatInfo.addUrlEntry(url));
+		
 		GoogleSBBody body = new GoogleSBBody(client, threatInfo);	
 		
 		try (CloseableHttpClient httpClient = HttpClientBuilder.create().build()){
@@ -40,16 +46,23 @@ public class URLChecker {
 			//Construct body entity.
 			StringEntity entity = new StringEntity(httpBody);
 			
-			request.addHeader("content-type", "application/json");
+			request.addHeader("Content-Type", "application/json");
 			request.setEntity(entity);
 			
 			response = httpClient.execute(request);
+			String responseBody = response.getEntity().toString();
 			
 			//Process response.
 			StatusLine status = response.getStatusLine();
-			if (status.getStatusCode() != 200) {
-				//TODO: deserialize, parse and return urls.
-				return null;
+			if (status.getStatusCode() == 200) {
+				GoogleSBMatch[] matches = mapper.readValue(responseBody, GoogleSBMatch[].class);
+				
+				//Return the resulting urls from the response entity.
+				List<String> matchingUrls = new ArrayList<String>();
+				for (GoogleSBMatch match : matches) {
+					matchingUrls.add(match.getThreat().get("url"));
+				}
+				return matchingUrls;
 			}
 			else {
 				//TODO: throw exception.
@@ -65,5 +78,6 @@ public class URLChecker {
 	
 	//TODO: Get current threat lists dynamically.
 	//see- https://developers.google.com/safe-browsing/v4/lists
+	//(Currently just match to static defaults e.g. "Malware"
 
 }

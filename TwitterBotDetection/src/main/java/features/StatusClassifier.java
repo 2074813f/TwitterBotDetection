@@ -2,13 +2,19 @@ package features;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.ml.classification.NaiveBayes;
 import org.apache.spark.ml.classification.NaiveBayesModel;
 import org.apache.spark.ml.feature.HashingTF;
@@ -26,12 +32,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import models.LabelledStatus;
 import models.UserProfile;
+import twitter4j.Status;
+import twitter4j.URLEntity;
 
 public class StatusClassifier {
 	
+	static Logger logger = LogManager.getLogger();
+	
 	public static NaiveBayesModel trainBayesClassifier(SparkSession spark, List<UserProfile> users) {
 		
-		List<LabelledStatus> statuses = collectStatuses(users);
+		List<LabelledStatus> statuses = collectSpamStatuses(users);
+		
+		if (statuses.isEmpty()) {
+			logger.error("No training data.");
+			return null;
+		}
 		
 		Encoder<LabelledStatus> statusEncoder = Encoders.bean(LabelledStatus.class);
 		Dataset<LabelledStatus> ds = spark.createDataset(statuses, statusEncoder);
@@ -97,6 +112,67 @@ public class StatusClassifier {
 				)));
 		
 		return statuses;
+	}
+	
+	private static List<LabelledStatus> collectSpamStatuses(List<UserProfile> users) {
+		//TODO:Consider that we should only use bots here, as this is for the training set.
+		
+		List<LabelledStatus> result = new ArrayList<LabelledStatus>();
+		
+		//Collect all the status objects.
+		//Partition into humans and bots for implicit labelling.
+		//XXX:Consideration: duplication of code but simplification of processing.
+		List<Status> human_statuses = new ArrayList<Status>();
+		List<Status> bot_statuses = new ArrayList<Status>();
+		users.forEach(user -> {
+			if (user.getLabel().compareTo("human") == 0) user.getStatuses().forEach(status -> human_statuses.add(status));
+			else user.getStatuses().forEach(status -> bot_statuses.add(status));
+		});
+		
+		//For each list map urls.
+		
+		//Map URLs to statuses, so we can lookup urls and then
+		//retrieve the relevant status. {url:Status}
+		Map<String, Status> human_urls = new HashMap<String, Status>();
+		Map<String, Status> bot_urls = new HashMap<String, Status>();
+		
+		//TODO:partition to 500 urls per request.
+		for (Status st : human_statuses) {
+			URLEntity[] urlents = st.getURLEntities();
+			for(URLEntity ent : urlents) {
+				human_urls.put(ent.getURL(), st);
+			}
+		}
+		
+		for (Status st : bot_statuses) {
+			URLEntity[] urlents = st.getURLEntities();
+			for(URLEntity ent : urlents) {
+				bot_urls.put(ent.getExpandedURL(), st);
+			}
+		}
+		
+		logger.info("Found {} human urls.", human_urls.size());
+		logger.info("Found {} bot urls.", bot_urls.size());
+		
+		//Check the urls.
+		URLChecker checker = new URLChecker();
+		//Check human URLs
+		List<String> human_results = checker.isSpamURLs(human_urls.keySet());
+		if (human_results != null) {
+			logger.info("Found {} human spam urls.", human_results.size());
+			human_results.forEach(r -> result.add(new LabelledStatus(0.0, human_urls.get(r).getText())));
+		}
+		
+		//Check bot URLs
+		List<String> bot_results = checker.isSpamURLs(bot_urls.keySet());
+		if (bot_results != null) {
+			logger.info("Found {} bot spam urls.", bot_results.size());
+			bot_results.forEach(r -> result.add(new LabelledStatus(1.0, bot_urls.get(r).getText())));
+		}
+
+		logger.info("Found {} spam statuses.", result.size());
+		
+		return result;
 	}
 	
 	/**

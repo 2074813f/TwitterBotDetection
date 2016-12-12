@@ -1,5 +1,6 @@
 package models;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class GoogleSBThreatInfo {
@@ -11,6 +12,7 @@ public class GoogleSBThreatInfo {
 	
 	//TODO: Consider builder pattern.
 	public GoogleSBThreatInfo() {
+		threatEntries = new HashMap<String, String>();
 	}
 	
 	/**

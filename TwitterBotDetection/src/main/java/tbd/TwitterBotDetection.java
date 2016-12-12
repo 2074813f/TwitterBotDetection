@@ -68,10 +68,10 @@ public class TwitterBotDetection {
 				.config("spark.master", "local")
 				.getOrCreate();
 		
-		//NaiveBayesModel model = StatusClassifier.trainBayesClassifier(spark, users);
+		NaiveBayesModel model = StatusClassifier.trainBayesClassifier(spark, users);
 		
 		//logger.info("Extracted account features for {} users", features.size());
-
+		
 	}
 
 }
