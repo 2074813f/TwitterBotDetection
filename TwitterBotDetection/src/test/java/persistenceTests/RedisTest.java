@@ -9,7 +9,7 @@ import org.junit.Test;
 import com.lambdaworks.redis.RedisClient;
 import com.lambdaworks.redis.api.StatefulRedisConnection;
 import com.lambdaworks.redis.api.sync.RedisCommands;
-import com.lambdaworks.redis.api.sync.RedisStringCommands;
+
 
 public class RedisTest {
 	
@@ -18,11 +18,11 @@ public class RedisTest {
 
 	private RedisClient redisClient;
 	private StatefulRedisConnection<String, String> connection;
-	private RedisStringCommands<String, String> syncCommands;
+	private RedisCommands<String, String> syncCommands;
 	
 	@Before
 	public void setUp() {
-		redisClient = RedisClient.create("redis://localhost");
+		redisClient = RedisClient.create("redis://localhost:6379");
 		connection = redisClient.connect();
 		syncCommands = connection.sync();
 	}
@@ -37,8 +37,8 @@ public class RedisTest {
 	public void redisConnection() {
 		assertTrue(connection.isOpen());
 		
-		syncCommands.set("key", "Hello, Redis!");
-		assertEquals(syncCommands.get("key").compareTo("Hello, Redis!"), 0);
+		syncCommands.set("testkey", "Hello, Test!");
+		
 	}
 	
 //	@Test
