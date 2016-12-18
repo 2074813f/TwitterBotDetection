@@ -38,7 +38,7 @@ public class RedisTest {
 		assertTrue(connection.isOpen());
 		
 		syncCommands.set("testkey", "Hello, Test!");
-		
+		syncCommands.spop("testkey");
 	}
 	
 //	@Test

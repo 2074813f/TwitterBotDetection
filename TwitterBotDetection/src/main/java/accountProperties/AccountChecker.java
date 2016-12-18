@@ -1,5 +1,6 @@
 package accountProperties;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -9,6 +10,10 @@ import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lambdaworks.redis.api.sync.RedisCommands;
+
 import models.LabelledUser;
 import models.UserProfile;
 import twitter4j.HttpResponseCode;
@@ -16,7 +21,9 @@ import twitter4j.ResponseList;
 import twitter4j.Status;
 import twitter4j.Twitter;
 import twitter4j.TwitterException;
+import twitter4j.TwitterObjectFactory;
 import twitter4j.User;
+import twitter4j.json.DataObjectFactory;
 
 public class AccountChecker {
 	
@@ -90,7 +97,8 @@ public class AccountChecker {
 	
 	/**
 	 * Performs a lookup on a set of users by id, to determine whether 
-	 * they are accessible, and discards the user if not.
+	 * they are accessible, and discards the user if not. Returns a list
+	 * of fully hydrated users whose profile was accessible.
 	 * 
 	 * TODO: consider renaming.
 	 * TODO: store returned user information.
@@ -98,15 +106,50 @@ public class AccountChecker {
 	 * 
 	 * @param user
 	 * @return - the List of UserProfiles with inaccessible profiles removed.
+	 * @throws TwitterException 
 	 */
-	public static List<UserProfile> filter_accessible_labelled(Twitter twitter, List<LabelledUser> users) throws RuntimeException {
+	public static List<UserProfile> getUsers(Twitter twitter, 
+			RedisCommands<String, String> redisApi, List<LabelledUser> users) throws RuntimeException {
 
-		//XXX: Might be better to refactor this outside this function and return list of ids/users to remove.
+		ObjectMapper mapper = new ObjectMapper();
+		//mapper.registerModule(new MrBeanModule());
+		
 		List<UserProfile> result = new ArrayList<UserProfile>();
 		
 		//Construct map for id lookup to match to results.
 		Map<Long, LabelledUser> mappedUsers = new HashMap<Long, LabelledUser>();
 		users.stream().forEach(user -> mappedUsers.put(user.getUserId(), user));
+		
+		//Check for cached users.
+		logger.info("Checking for cached users...");
+		
+		//TODO: Consider parallel streams.
+		//Check for Users in cache and collect if exists.
+		//TODO:Iterate in a safe way.
+		List<LabelledUser> toRemove = new ArrayList<LabelledUser>();
+		
+		for (LabelledUser user : users) {
+			String returned = redisApi.get("user:" + user.getUserId());
+			if (returned != null) {
+				try {
+					//Unmarshell User.
+					//User returnedUser = mapper.readValue(returned, User.class);
+					User returnedUser = TwitterObjectFactory.createUser(returned);
+					//Add user to results.
+					result.add(new UserProfile(mappedUsers.get(user.getUserId()).getLabel(), returnedUser, new ArrayList<Status>()));
+					//Remove from further searching.
+					toRemove.add(user);
+				}
+				catch (TwitterException e) {
+					e.printStackTrace();
+					//throw new RuntimeException("Failed to unmarshall User from Redis.");
+				}
+			}
+		}
+		
+		logger.info("Found {} cached users.", result.size());
+		//Remove the cached users from the id collection.
+		toRemove.forEach(user -> users.remove(user));
 		
 		int index = 0;
 		
@@ -133,9 +176,24 @@ public class AccountChecker {
 			ResponseList<User> response = lookupUsers(twitter, userIds);
 			
 			//Add the results, setting the label from mappedUsers.
-			result.addAll(response.stream()
-					.map(user -> new UserProfile(mappedUsers.get(user.getId()).getLabel(), user, new ArrayList<Status>()))
-					.collect(Collectors.toList()));
+			if (response != null) {
+				result.addAll(response.stream()
+						.map(user -> new UserProfile(mappedUsers.get(user.getId()).getLabel(), user, new ArrayList<Status>()))
+						.collect(Collectors.toList()));
+				for (User user : response) {
+					//Add to redis.
+					//TODO: Exception on existence of key, should not be in store since earlier check.
+					String marshalledUser;
+					try {
+						marshalledUser = mapper.writeValueAsString(user);
+						redisApi.set("user:"+user.getId(), marshalledUser);
+					} catch (JsonProcessingException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
+				}
+			}
 			
 		}
 		
@@ -205,7 +263,7 @@ public class AccountChecker {
 	 * Does the lookup for batches of users.
 	 * 
 	 * @param users
-	 * @return
+	 * @return - A ResponseList of Users found, or null if there were no users found.
 	 * @throws InterruptedException 
 	 */
 	private static ResponseList<User> lookupUsers(Twitter twitter, long[] userIds) throws RuntimeException {

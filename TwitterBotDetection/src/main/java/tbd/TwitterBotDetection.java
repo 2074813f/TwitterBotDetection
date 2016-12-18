@@ -8,10 +8,13 @@ import org.apache.logging.log4j.Logger;
 import org.apache.spark.ml.classification.NaiveBayesModel;
 import org.apache.spark.sql.SparkSession;
 
+import com.lambdaworks.redis.api.sync.RedisCommands;
+
 import accountProperties.AccountChecker;
 import features.StatusClassifier;
 import models.LabelledUser;
 import models.UserProfile;
+import util.RedisConfig;
 import util.TwitterConfig;
 import twitter4j.Status;
 import twitter4j.Twitter;
@@ -26,6 +29,9 @@ public class TwitterBotDetection {
 		//Get a twitter instance and attempt to authenticate with env variables.
 		Twitter twitter = TwitterConfig.authTwitter();
 		
+		//Connect to the Redis server.
+		RedisCommands<String, String> redisApi = RedisConfig.startRedis();
+		
 		//Read statuses from file.
 		//List<UserProfile> users = DataCapture.readStatusFile(args[0]);
 		
@@ -35,7 +41,7 @@ public class TwitterBotDetection {
 		
 		//FOR LABELLED
 		List<LabelledUser> labelledUsers = DataCapture.readLabelledFile(args[0]);
-		List<UserProfile> users = AccountChecker.filter_accessible_labelled(twitter, labelledUsers);
+		List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, labelledUsers);
 		logger.info("Reduced to {} usable users.", users.size());
 		
 		int bots = 0;

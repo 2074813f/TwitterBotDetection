@@ -21,16 +21,9 @@ public class TwitterConfig {
 	public static Twitter authTwitter() {
 		try {
 			String oathAccessToken = System.getenv("WTF_TWITTER_ACCESS_TOKEN");
-			//System.setProperty("twitter4j.oauth.accessToken", oathAccessToken);
-			
 			String oathAccessTokenSecret = System.getenv("WTF_TWITTER_ACCESS_TOKEN_SECRET");
-			//System.setProperty("twitter4j.oauth.accessTokenSecret", oathAccessTokenSecret);
-			
 			String oathConsumerKey = System.getenv("WTF_TWITTER_CONSUMER_KEY");
-			//System.setProperty("twitter4j.oauth.consumerKey", oathConsumerKey);
-			
 			String oathConsumerKeySecret = System.getenv("WTF_TWITTER_CONSUMER_SECRET");
-			//System.setProperty("twitter4j.oauth.consumerSecret", oathConsumerKeySecret);
 			
 			ConfigurationBuilder cb = new ConfigurationBuilder();
 			cb.setDebugEnabled(true)
