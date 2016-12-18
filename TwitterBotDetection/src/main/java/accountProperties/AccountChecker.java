@@ -112,7 +112,6 @@ public class AccountChecker {
 			RedisCommands<String, String> redisApi, List<LabelledUser> users) throws RuntimeException {
 
 		ObjectMapper mapper = new ObjectMapper();
-		//mapper.registerModule(new MrBeanModule());
 		
 		List<UserProfile> result = new ArrayList<UserProfile>();
 		
@@ -120,14 +119,14 @@ public class AccountChecker {
 		Map<Long, LabelledUser> mappedUsers = new HashMap<Long, LabelledUser>();
 		users.stream().forEach(user -> mappedUsers.put(user.getUserId(), user));
 		
-		//Check for cached users.
 		logger.info("Checking for cached users...");
 		
 		//TODO: Consider parallel streams.
 		//Check for Users in cache and collect if exists.
 		//TODO:Iterate in a safe way.
-		List<LabelledUser> toRemove = new ArrayList<LabelledUser>();
+		List<LabelledUser> notFound = new ArrayList<LabelledUser>();
 		
+		//Check for cached users.
 		for (LabelledUser user : users) {
 			String returned = redisApi.get("user:" + user.getUserId());
 			if (returned != null) {
@@ -137,33 +136,35 @@ public class AccountChecker {
 					User returnedUser = TwitterObjectFactory.createUser(returned);
 					//Add user to results.
 					result.add(new UserProfile(mappedUsers.get(user.getUserId()).getLabel(), returnedUser, new ArrayList<Status>()));
-					//Remove from further searching.
-					toRemove.add(user);
+					
 				}
 				catch (TwitterException e) {
 					e.printStackTrace();
 					//throw new RuntimeException("Failed to unmarshall User from Redis.");
 				}
 			}
+			else {
+				//Requires Twitter API request.
+				notFound.add(user);
+			}
 		}
 		
 		logger.info("Found {} cached users.", result.size());
-		//Remove the cached users from the id collection.
-		toRemove.forEach(user -> users.remove(user));
 		
 		int index = 0;
 		
-		while (index < users.size()) {
+		//Iterate through the users not found in cache and gather from Twitter.
+		while (index < notFound.size()) {
 			List<LabelledUser> toBeProcessed;	//View of sublist of <=100 users
 			
 			//Take up to 100 users at a time, bounded by size of list.
-			if (index+100 < users.size()) {
-				toBeProcessed = users.subList(index, index+100);
+			if (index+100 < notFound.size()) {
+				toBeProcessed = notFound.subList(index, index+100);
 				index += 100;
 			}
 			else {
-				toBeProcessed = users.subList(index, users.size());
-				index = users.size();
+				toBeProcessed = notFound.subList(index, notFound.size());
+				index = notFound.size();
 			}
 			
 			//Get the ids of a subset of users to check.
