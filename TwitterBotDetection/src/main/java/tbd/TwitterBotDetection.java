@@ -30,7 +30,7 @@ public class TwitterBotDetection {
 		Twitter twitter = TwitterConfig.authTwitter();
 		
 		//Connect to the Redis server.
-		RedisCommands<String, String> redisApi = RedisConfig.startRedis();
+		//RedisCommands<String, String> redisApi = RedisConfig.startRedis();
 		
 		//Read statuses from file.
 		//List<UserProfile> users = DataCapture.readStatusFile(args[0]);
@@ -41,7 +41,7 @@ public class TwitterBotDetection {
 		
 		//FOR LABELLED
 		List<LabelledUser> labelledUsers = DataCapture.readLabelledFile(args[0]);
-		List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, labelledUsers);
+		List<UserProfile> users = AccountChecker.getUsers(twitter, null, labelledUsers);
 		logger.info("Reduced to {} usable users.", users.size());
 		
 		int bots = 0;

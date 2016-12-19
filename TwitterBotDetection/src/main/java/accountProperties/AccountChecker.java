@@ -28,72 +28,7 @@ import twitter4j.json.DataObjectFactory;
 public class AccountChecker {
 	
 	static Logger logger = LogManager.getLogger();
-	
-	/**
-	 * Performs a lookup on a set of users by id, up to 100 at a time,
-	 * to determine whether they are accessible, and discards the user if
-	 * not.
-	 * 
-	 * TODO: store returned user information.
-	 * 
-	 * @deprecated - TODO: replace with workings of labelled, then have helper function for adding labels
-	 * @param user
-	 * @return - the List of UserProfiles with inaccessible profiles removed.
-	 */
-	public static List<UserProfile> filter_accessible(Twitter twitter, List<UserProfile> users) throws RuntimeException {
-
-		//XXX: Might be better to refactor this outside this function and return list of ids/users to remove.
-		List<UserProfile> processed = users;
-		List<UserProfile> toRemove = new ArrayList<UserProfile>();
-		
-		int index = 0;
-		
-		while (index < users.size()) {
-			List<UserProfile> toBeProcessed;	//View of sublist of <=100 users
-			
-			//Take up to 100 users at a time, bounded by size of list.
-			if (index+100 < users.size()) {
-				toBeProcessed = users.subList(index, index+100);
-				index += 100;
-			}
-			else {
-				toBeProcessed = users.subList(index, users.size());
-				index = users.size();
-			}
-			
-			//Get the ids of a subset of users to check.
-			long[] userIds = toBeProcessed.stream()
-					.map(user -> user.getUser()
-					.getId())
-					.mapToLong(Long::longValue)	//Note: need to map to Long object before toArray().
-					.toArray();
-			
-			//Do the lookup
-			ResponseList<User> response = lookupUsers(twitter, userIds);
-			
-			//If response is empty then remove all users
-			if (response == null) {
-				toRemove.addAll(toBeProcessed);
-			}
-			else {
-				//If a user is not in the response, remove the user.
-				for (UserProfile user : toBeProcessed) {
-					if (!response.contains(user.getUser())) {
-						//Note to remove the user, avoids perturbing list size for List.subList()
-						toRemove.add(user);
-					}
-				}
-			}	
-		}
-		
-		//Remove each User that wasn't retrievable.
-		for (UserProfile user : toRemove) {
-			processed.remove(user);
-		}
-		
-		//Return the reduced list of Users.
-		return processed;
-	}
+	static ObjectMapper mapper = new ObjectMapper();
 	
 	/**
 	 * Performs a lookup on a set of users by id, to determine whether 
@@ -111,8 +46,6 @@ public class AccountChecker {
 	public static List<UserProfile> getUsers(Twitter twitter, 
 			RedisCommands<String, String> redisApi, List<LabelledUser> users) throws RuntimeException {
 
-		ObjectMapper mapper = new ObjectMapper();
-		
 		List<UserProfile> result = new ArrayList<UserProfile>();
 		
 		//Construct map for id lookup to match to results.
@@ -126,34 +59,39 @@ public class AccountChecker {
 		//TODO:Iterate in a safe way.
 		List<LabelledUser> notFound = new ArrayList<LabelledUser>();
 		
-		//Check for cached users.
-		for (LabelledUser user : users) {
-			String returned = redisApi.get("user:" + user.getUserId());
-			if (returned != null) {
-				try {
-					//Unmarshell User.
-					//User returnedUser = mapper.readValue(returned, User.class);
-					User returnedUser = TwitterObjectFactory.createUser(returned);
-					//Add user to results.
-					result.add(new UserProfile(mappedUsers.get(user.getUserId()).getLabel(), returnedUser, new ArrayList<Status>()));
-					
+		//If Redis Interface provided...
+		if (redisApi != null) {
+			//Check for cached users.
+			for (LabelledUser user : users) {
+				String returned = redisApi.get("user:" + user.getUserId());
+				if (returned != null) {
+					try {
+						//Unmarshell User.
+						//User returnedUser = mapper.readValue(returned, User.class);
+						User returnedUser = TwitterObjectFactory.createUser(returned);
+						//Add user to results.
+						result.add(new UserProfile(mappedUsers.get(user.getUserId()).getLabel(), returnedUser, new ArrayList<Status>()));
+						
+					}
+					catch (TwitterException e) {
+						e.printStackTrace();
+						//throw new RuntimeException("Failed to unmarshall User from Redis.");
+					}
 				}
-				catch (TwitterException e) {
-					e.printStackTrace();
-					//throw new RuntimeException("Failed to unmarshall User from Redis.");
+				else {
+					//Requires Twitter API request.
+					notFound.add(user);
 				}
 			}
-			else {
-				//Requires Twitter API request.
-				notFound.add(user);
-			}
+			
+			logger.info("Found {} cached users.", result.size());
+		}
+		else {
+			logger.info("Caching Disabled - No Redis Interface given.");
 		}
 		
-		logger.info("Found {} cached users.", result.size());
-		
-		int index = 0;
-		
 		//Iterate through the users not found in cache and gather from Twitter.
+		int index = 0;
 		while (index < notFound.size()) {
 			List<LabelledUser> toBeProcessed;	//View of sublist of <=100 users
 			
@@ -181,18 +119,19 @@ public class AccountChecker {
 				result.addAll(response.stream()
 						.map(user -> new UserProfile(mappedUsers.get(user.getId()).getLabel(), user, new ArrayList<Status>()))
 						.collect(Collectors.toList()));
-				for (User user : response) {
-					//Add to redis.
-					//TODO: Exception on existence of key, should not be in store since earlier check.
-					String marshalledUser;
-					try {
-						marshalledUser = mapper.writeValueAsString(user);
-						redisApi.set("user:"+user.getId(), marshalledUser);
-					} catch (JsonProcessingException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+				
+				//If Redis Interface provided...
+				if (redisApi != null) {
+					for (User user : response) {
+						//Add to redis.
+						//TODO: Exception on existence of key, should not be in store since earlier check.
+						try {
+							cacheObject(redisApi, user);
+						} catch (JsonProcessingException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
 					}
-					
 				}
 			}
 			
@@ -356,6 +295,33 @@ public class AccountChecker {
 					throw new RuntimeException();
 				}
 			}
+		}
+	}
+
+	/**
+	 * Cache an object into a Redis server given a Redis API
+	 * Interface.
+	 * 
+	 * @param redisApi
+	 * @param o
+	 * @throws JsonProcessingException
+	 */
+	private static void cacheObject(RedisCommands<String, String> redisApi, Object o) throws JsonProcessingException {
+		//If object is a User...
+		if (Object.class.isInstance(User.class)) {
+			User user = (User) o;
+			String marshalledUser = mapper.writeValueAsString(user);
+			redisApi.set("user:"+user.getId(), marshalledUser);
+		}
+		//If object is a status...
+		else if (Object.class.isInstance(Status.class)) {
+			Status status = (Status) o;
+			String marshalledStatus = mapper.writeValueAsString(status);
+			redisApi.set("status:"+status.getId(), marshalledStatus);
+		}
+		//Else don't know how to store.
+		else {
+			throw new RuntimeException(String.format("Don't know how to store %s object.", o.getClass().getName()));
 		}
 	}
 }
