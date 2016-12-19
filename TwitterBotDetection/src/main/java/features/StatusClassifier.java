@@ -1,18 +1,10 @@
 package features;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.ml.classification.NaiveBayes;
@@ -27,8 +19,6 @@ import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import models.LabelledStatus;
 import models.UserProfile;
@@ -187,22 +177,5 @@ public class StatusClassifier {
 		result.select("features", "prediction", "label")
 			.collectAsList().forEach(entry ->
 			System.out.println(entry.toString()));
-	}
-	
-	/**
-	 * Take a labelled status classification and report if the status has
-	 * some spam-like characteristic(s) or not.
-	 * 
-	 * Spam-like:
-	 *   - Contains one or more blacklisted URLs
-	 * 
-	 * @param status
-	 * @return
-	 */
-	private static boolean isSpam(LabelledStatus status) {
-		return false;
-	}
-	
-
-	
+	}	
 }
