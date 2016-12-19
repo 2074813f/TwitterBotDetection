@@ -78,6 +78,7 @@ public class TwitterBotDetection {
 		
 		//logger.info("Extracted account features for {} users", features.size());
 		
+		RedisConfig.stopRedis();
 	}
 
 }

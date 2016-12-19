@@ -34,18 +34,10 @@ public class RedisTest {
 	}
 	
 	@Test
-	public void redisConnection() {
+	public void setPopKey() {
 		assertTrue(connection.isOpen());
 		
 		syncCommands.set("testkey", "Hello, Test!");
 		syncCommands.spop("testkey");
 	}
-	
-//	@Test
-//	public void testSet() {
-//		syncCommands.set("key", "Hello, Redis!");
-//		
-//		assertEquals(syncCommands.get("key").compareTo("Hello, Redis!"), 0);
-//	}
-
 }

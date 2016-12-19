@@ -355,13 +355,13 @@ public class AccountChecker {
 	 */
 	private static void cacheObject(RedisCommands<String, String> redisApi, Object o) throws JsonProcessingException {
 		//If object is a User...
-		if (Object.class.isInstance(User.class)) {
+		if (o instanceof User) {
 			User user = (User) o;
 			String marshalledUser = mapper.writeValueAsString(user);
 			redisApi.set("user:"+user.getId(), marshalledUser);
 		}
 		//If object is a status...
-		else if (Object.class.isInstance(Status.class)) {
+		else if (o instanceof Status) {
 			Status status = (Status) o;
 			String marshalledStatus = mapper.writeValueAsString(status);
 			redisApi.set("status:"+status.getId(), marshalledStatus);

@@ -67,6 +67,7 @@ public class MainTest {
 		List<LabelledUser> labelledUsers = DataCapture.readLabelledFile("src/test/resources/labelled10.txt");
 		assertTrue(labelledUsers.size() == 10);
 		
+		//TODO: use test redis server not production
 		RedisCommands<String, String> redisApi = RedisConfig.startRedis();
 		
 		List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, labelledUsers);
@@ -91,6 +92,10 @@ public class MainTest {
 				.getOrCreate();
 		
 		NaiveBayesModel model = StatusClassifier.trainBayesClassifier(spark, users);
+		
+		//Purge and shutdown redis instance.
+		redisApi.flushall();
+		RedisConfig.stopRedis();
 	}
 
 }
