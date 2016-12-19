@@ -62,6 +62,7 @@ public class MainTest {
 		
 	}
 	
+	@Test
 	public void runApplicationWithCaching() {
 		List<LabelledUser> labelledUsers = DataCapture.readLabelledFile("src/test/resources/labelled10.txt");
 		assertTrue(labelledUsers.size() == 10);
