@@ -29,6 +29,7 @@ public class RedisTest {
 	
 	@After
 	public void destroy() {
+		syncCommands.flushall();
 		connection.close();
 		redisClient.shutdown();
 	}
@@ -38,6 +39,8 @@ public class RedisTest {
 		assertTrue(connection.isOpen());
 		
 		syncCommands.set("testkey", "Hello, Test!");
-		syncCommands.spop("testkey");
+		syncCommands.get("testkey");
+		
+		syncCommands.flushall();
 	}
 }

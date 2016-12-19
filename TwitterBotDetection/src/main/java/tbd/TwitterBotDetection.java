@@ -23,6 +23,8 @@ public class TwitterBotDetection {
 	
 	public static void main(String[] args) {
 		
+		String filename = args[0];
+		
 		Logger logger = LogManager.getLogger(TwitterBotDetection.class);
 		if (logger == null) System.exit(-1);
 		
@@ -40,7 +42,7 @@ public class TwitterBotDetection {
 		//logger.info("Reduced to {} usable users.", users.size());
 		
 		//FOR LABELLED
-		List<LabelledUser> labelledUsers = DataCapture.readLabelledFile(args[0]);
+		List<LabelledUser> labelledUsers = DataCapture.readLabelledFile(filename);
 		List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, labelledUsers);
 		logger.info("Reduced to {} usable users.", users.size());
 		
