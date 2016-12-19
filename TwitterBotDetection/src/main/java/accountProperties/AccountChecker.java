@@ -1,6 +1,5 @@
 package accountProperties;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,14 +15,12 @@ import com.lambdaworks.redis.api.sync.RedisCommands;
 
 import models.LabelledUser;
 import models.UserProfile;
-import twitter4j.HttpResponseCode;
 import twitter4j.ResponseList;
 import twitter4j.Status;
 import twitter4j.Twitter;
 import twitter4j.TwitterException;
 import twitter4j.TwitterObjectFactory;
 import twitter4j.User;
-import twitter4j.json.DataObjectFactory;
 
 public class AccountChecker {
 	
