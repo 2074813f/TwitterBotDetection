@@ -146,7 +146,7 @@ public class AccountChecker {
 	 * @param users
 	 * @return
 	 */
-	public static List<Status> getStatuses(Twitter twitter, List<LabelledUser> users) {
+	public static List<Status> getStatuses(Twitter twitter, RedisCommands<String, String> redisApi, List<LabelledUser> users) {
 		List<Status> result = new ArrayList<Status>();
 		
 		List<Long> allStatusIds = new ArrayList<Long>();
@@ -163,19 +163,56 @@ public class AccountChecker {
 			}
 		}
 		
-		int index = 0;
+		logger.info("Checking for cached statuses...");
 		
-		while (index < allStatusIds.size()) {
+		//TODO: Consider parallel streams.
+		//Check for Statuses in cache and collect if exists.
+		//TODO:Iterate in a safe way.
+		List<Long> notFound = new ArrayList<Long>();
+		
+		//If Redis Interface provided...
+		if (redisApi != null) {
+			//Check for cached statuses.
+			for (Long status : allStatusIds) {
+				String returned = redisApi.get("status:" + status);
+				if (returned != null) {
+					try {
+						//Unmarshell Status.
+						Status returnedStatus = TwitterObjectFactory.createStatus(returned);
+						//Add user to results.
+						result.add(returnedStatus);
+						
+					}
+					catch (TwitterException e) {
+						e.printStackTrace();
+						//throw new RuntimeException("Failed to unmarshall Status from Redis.");
+					}
+				}
+				else {
+					//Requires Twitter API request.
+					notFound.add(status);
+				}
+			}
+			
+			logger.info("Found {} cached statuses.", result.size());
+		}
+		else {
+			logger.info("Caching Disabled - No Redis Interface given.");
+		}
+		
+		//Iterate through the statuses not found in cache and gather from Twitter.
+		int index = 0;
+		while (index < notFound.size()) {
 			List<Long> toBeProcessed;	//View of sublist of <=Status ids
 			
 			//Take up to 100 users at a time, bounded by size of list.
-			if (index+100 < allStatusIds.size()) {
-				toBeProcessed = allStatusIds.subList(index, index+100);
+			if (index+100 < notFound.size()) {
+				toBeProcessed = notFound.subList(index, index+100);
 				index += 100;
 			}
 			else {
-				toBeProcessed = allStatusIds.subList(index, allStatusIds.size());
-				index = allStatusIds.size();
+				toBeProcessed = notFound.subList(index, notFound.size());
+				index = notFound.size();
 			}
 			
 			//Get the ids of a subset of users to check.
@@ -190,6 +227,19 @@ public class AccountChecker {
 			result.addAll(response.stream()
 					.collect(Collectors.toList()));
 			
+			//If Redis Interface provided...
+			if (redisApi != null) {
+				for (Status status : response) {
+					//Add to redis.
+					//TODO: Exception on existence of key, should not be in store since earlier check.
+					try {
+						cacheObject(redisApi, status);
+					} catch (JsonProcessingException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			}
 		}
 		
 		//Return the reduced list of Users.

@@ -30,7 +30,7 @@ public class TwitterBotDetection {
 		Twitter twitter = TwitterConfig.authTwitter();
 		
 		//Connect to the Redis server.
-		//RedisCommands<String, String> redisApi = RedisConfig.startRedis();
+		RedisCommands<String, String> redisApi = RedisConfig.startRedis();
 		
 		//Read statuses from file.
 		//List<UserProfile> users = DataCapture.readStatusFile(args[0]);
@@ -41,7 +41,7 @@ public class TwitterBotDetection {
 		
 		//FOR LABELLED
 		List<LabelledUser> labelledUsers = DataCapture.readLabelledFile(args[0]);
-		List<UserProfile> users = AccountChecker.getUsers(twitter, null, labelledUsers);
+		List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, labelledUsers);
 		logger.info("Reduced to {} usable users.", users.size());
 		
 		int bots = 0;
@@ -54,7 +54,7 @@ public class TwitterBotDetection {
 		logger.info("Breakdown: {} humans, {} bots", humans, bots);
 		
 		//Get hydrated statuses and associate with the users.
-		List<Status> statuses = AccountChecker.getStatuses(twitter, labelledUsers);
+		List<Status> statuses = AccountChecker.getStatuses(twitter, redisApi, labelledUsers);
 		logger.info("Retrieved {} statuses.", statuses.size());
 		
 		//TODO: Refactor to avoid this
