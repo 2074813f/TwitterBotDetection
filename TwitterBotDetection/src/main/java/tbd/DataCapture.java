@@ -133,8 +133,9 @@ public class DataCapture {
 			logger.info("Obtained {} labelled users.", labelledUsers.size());
 		}
 		catch (IOException e) {
-			logger.error("Error reading file: ", e.toString());
-		}
+			logger.error("Error reading input file.");
+		        System.exit(-1);
+                }
 		
 		return labelledUsers;
 	}

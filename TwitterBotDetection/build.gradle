@@ -8,10 +8,18 @@
  */
 
 // Apply the java plugin to add support for Java
-apply plugin: 'java'
+apply plugin: 'application'
 apply plugin: 'eclipse'
 
+sourceCompatibility = 1.8
 version = '1.0'
+
+mainClassName = 'tbd.TwitterBotDetection'
+cliargs = '~/labelled10.txt'
+
+//Disable distZip/distTar task to speed up build/save resources.
+distZip.enabled = false
+distTar.enabled = false
 
 // In this section you declare where to find the dependencies of your project
 repositories {
@@ -44,9 +52,29 @@ dependencies {
     testCompile 'junit:junit:4.12'
 }
 
+//Configure "run" task to take arguments via System property.
+run {
+    /* Need to split the space-delimited value in the property*/
+    if (project.hasProperty('cliargs')) {
+        args(cliargs)
+    }
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDirs "src/main/resources"
+        }
+    }
+}
+
 jar {
 	manifest {
-		attributes 'Implementation-Title': 'TwitterBotDetection',
-		           'Implementation-Version': version
+            attributes(
+                'Implementation-Title': 'TwitterBotDetection',
+		'Implementation-Version': version,
+                'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+                'Main-Class': mainClassName
+            )
 	}
 }

@@ -23,11 +23,12 @@ public class TwitterBotDetection {
 	
 	public static void main(String[] args) {
 		
-		String filename = args[0];
-		
-		Logger logger = LogManager.getLogger(TwitterBotDetection.class);
+		//XXX: String filename = args[0];
+                String filename = "/home/adam/labelled10.txt";
+	
+    		Logger logger = LogManager.getLogger(TwitterBotDetection.class);
 		if (logger == null) System.exit(-1);
-		
+
 		//Get a twitter instance and attempt to authenticate with env variables.
 		Twitter twitter = TwitterConfig.authTwitter();
 		
