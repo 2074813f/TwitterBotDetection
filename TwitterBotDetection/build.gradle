@@ -15,7 +15,6 @@ sourceCompatibility = 1.8
 version = '1.0'
 
 mainClassName = 'tbd.TwitterBotDetection'
-cliargs = '~/labelled10.txt'
 
 //Disable distZip/distTar task to speed up build/save resources.
 distZip.enabled = false

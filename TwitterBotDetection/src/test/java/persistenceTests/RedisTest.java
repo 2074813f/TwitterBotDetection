@@ -13,6 +13,7 @@ import com.lambdaworks.redis.api.sync.RedisCommands;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
+import twitter4j.Status;
 import twitter4j.Twitter;
 import twitter4j.User;
 import twitter4j.TwitterException;
@@ -57,21 +58,39 @@ public class RedisTest {
 		syncCommands.flushall();
 	}
 
-        @Test
-        public void setGetTwitterUser() throws JsonProcessingException, TwitterException {
-                Twitter twitter = TwitterConfig.authTwitter();
-                long userId = 791455969016442881L;       //user:2074813fadam
+    @Test
+    public void setGetTwitterUser() throws JsonProcessingException, TwitterException {
+        Twitter twitter = TwitterConfig.authTwitter();
+        long userId = 791455969016442881L;       //user:2074813fadam
 
-                //Get the Twitter user.
-                User user = twitter.showUser(userId);
+        //Get the Twitter user.
+        User user = twitter.showUser(userId);
 
-                String marshalledUser = mapper.writeValueAsString(user);
+        String marshalledUser = mapper.writeValueAsString(user);
 
-                //Persist, retrieve, compare.
-                syncCommands.set("user:"+user.getId(), marshalledUser);
-                String returned = syncCommands.get("user:"+user.getId());
-                User returnedUser = TwitterObjectFactory.createUser(returned);
+        //Persist, retrieve, compare.
+        syncCommands.set("user:"+user.getId(), marshalledUser);
+        String returned = syncCommands.get("user:"+user.getId());
+        User returnedUser = TwitterObjectFactory.createUser(returned);
 
-                assertTrue(user.compareTo(returnedUser) == 0);
-        }
+        assertTrue(user.compareTo(returnedUser) == 0);
+    }
+    
+    @Test
+    public void setGetTwitterStatus() throws JsonProcessingException, TwitterException {
+    	Twitter twitter = TwitterConfig.authTwitter();
+    	long statusId = 791642198693572608L;		//user:2074813fadam (test status)
+    	
+    	//Get the Twitter status.
+    	Status status = twitter.showStatus(statusId);
+    	
+    	String marshalledStatus = mapper.writeValueAsString(status);
+    	
+    	//Persist, retrieve, compare.
+    	syncCommands.set("status:"+status.getId(), marshalledStatus);
+    	String returned = syncCommands.get("status:"+status.getId());
+    	Status returnedStatus = TwitterObjectFactory.createStatus(returned);
+    	
+    	assertTrue(status.compareTo(returnedStatus) == 0);
+    }
 }
