@@ -23,8 +23,8 @@ public class TwitterBotDetection {
 	
 	public static void main(String[] args) {
 		
-		//XXX: String filename = args[0];
-        String filename = "/home/adam/labelled10.txt";
+		String filename = args[0];
+        //XXX: String filename = "/home/adam/labelled10.txt";
 	
     	Logger logger = LogManager.getLogger(TwitterBotDetection.class);
 		if (logger == null) System.exit(-1);

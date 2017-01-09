@@ -64,7 +64,6 @@ public class AccountChecker {
 				if (returned != null) {
 					try {
 						//Unmarshell User.
-						//User returnedUser = mapper.readValue(returned, User.class);
 						User returnedUser = TwitterObjectFactory.createUser(returned);
 						//Add user to results.
 						result.add(new UserProfile(mappedUsers.get(user.getUserId()).getLabel(), returnedUser, new ArrayList<Status>()));
@@ -254,7 +253,6 @@ public class AccountChecker {
 	 * @throws InterruptedException 
 	 */
 	private static ResponseList<User> lookupUsers(Twitter twitter, long[] userIds) throws RuntimeException {
-		
 		//TODO: consider futures
 		//If rate limit reached, we continue attempting after waiting.
 		while(true) {
@@ -303,7 +301,6 @@ public class AccountChecker {
 	 * @param user
 	 */
 	private static ResponseList<Status> lookupStatuses(Twitter twitter, long[] statusIds) {
-		
 		//TODO: consider futures
 		//If rate limit reached, we continue attempting after waiting.
 		while(true) {
@@ -364,6 +361,7 @@ public class AccountChecker {
 		else if (o instanceof Status) {
 			Status status = (Status) o;
 			String marshalledStatus = mapper.writeValueAsString(status);
+			//XXX: String marshalledStatus = TwitterObjectFactory.getRawJSON(status);
 			redisApi.set("status:"+status.getId(), marshalledStatus);
 		}
 		//Else don't know how to store.

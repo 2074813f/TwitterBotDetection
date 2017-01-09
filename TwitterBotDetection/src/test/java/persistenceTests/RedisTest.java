@@ -23,6 +23,9 @@ import util.TwitterConfig;
 
 public class RedisTest {
 	
+	private long userId = 791455969016442881L;       //user:2074813fadam
+	private long statusId = 818531952391311360L;		//user:2074813fadam (test status)
+	
 	//https://raw.githubusercontent.com/MSOpenTech/redis/3.0/Windows%20Service%20Documentation.md
 	//**default install (port 6379 and firewall exception ON):**
 	private RedisClient redisClient;
@@ -61,7 +64,6 @@ public class RedisTest {
     @Test
     public void setGetTwitterUser() throws JsonProcessingException, TwitterException {
         Twitter twitter = TwitterConfig.authTwitter();
-        long userId = 791455969016442881L;       //user:2074813fadam
 
         //Get the Twitter user.
         User user = twitter.showUser(userId);
@@ -79,7 +81,6 @@ public class RedisTest {
     @Test
     public void setGetTwitterStatus() throws JsonProcessingException, TwitterException {
     	Twitter twitter = TwitterConfig.authTwitter();
-    	long statusId = 791642198693572608L;		//user:2074813fadam (test status)
     	
     	//Get the Twitter status.
     	Status status = twitter.showStatus(statusId);
