@@ -22,8 +22,9 @@ import twitter4j.TwitterObjectFactory;
 import util.TwitterConfig;
 
 public class RedisTest {
+	//TODO: Switch to test client in Redis, and flushall/delete after testing.
 	
-	private long userId = 791455969016442881L;       //user:2074813fadam
+	private long userId = 791455969016442881L;       	//user:2074813fadam
 	private long statusId = 818531952391311360L;		//user:2074813fadam (test status)
 	
 	//https://raw.githubusercontent.com/MSOpenTech/redis/3.0/Windows%20Service%20Documentation.md
@@ -43,14 +44,13 @@ public class RedisTest {
 	
 	@After
 	public void destroy() {
-		syncCommands.flushall();
 		connection.close();
 		redisClient.shutdown();
 	}
 	
-        /**
-         * Test that a both setting and getting are possible.
-         */
+    /**
+     * Test that a both setting and getting are possible.
+     */
 	@Test
 	public void setGetKey() {
 		assertTrue(connection.isOpen());
@@ -67,15 +67,18 @@ public class RedisTest {
 
         //Get the Twitter user.
         User user = twitter.showUser(userId);
+        String key = "user:"+user.getId();
 
         String marshalledUser = mapper.writeValueAsString(user);
 
         //Persist, retrieve, compare.
-        syncCommands.set("user:"+user.getId(), marshalledUser);
+        syncCommands.set(key, marshalledUser);
         String returned = syncCommands.get("user:"+user.getId());
         User returnedUser = TwitterObjectFactory.createUser(returned);
 
         assertTrue(user.compareTo(returnedUser) == 0);
+        
+        assertTrue(syncCommands.del(key) == 1);
     }
     
     @Test
@@ -84,14 +87,17 @@ public class RedisTest {
     	
     	//Get the Twitter status.
     	Status status = twitter.showStatus(statusId);
+    	String key = "status:"+status.getId();
     	
     	String marshalledStatus = mapper.writeValueAsString(status);
     	
     	//Persist, retrieve, compare.
-    	syncCommands.set("status:"+status.getId(), marshalledStatus);
+    	syncCommands.set(key, marshalledStatus);
     	String returned = syncCommands.get("status:"+status.getId());
     	Status returnedStatus = TwitterObjectFactory.createStatus(returned);
     	
     	assertTrue(status.compareTo(returnedStatus) == 0);
+    	
+    	assertTrue(syncCommands.del(key) == 1);
     }
 }

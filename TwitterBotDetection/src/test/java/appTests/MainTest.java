@@ -9,6 +9,7 @@ import java.util.Map;
 import org.apache.spark.ml.classification.NaiveBayesModel;
 import org.apache.spark.sql.SparkSession;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.lambdaworks.redis.api.sync.RedisCommands;
@@ -32,6 +33,7 @@ public class MainTest {
 		twitter = TwitterConfig.authTwitter();
 	}
 	
+	@Ignore
 	@Test
 	public void runApplication() {
 		List<LabelledUser> labelledUsers = DataCapture.readLabelledFile("src/test/resources/labelled10.txt");
@@ -62,6 +64,7 @@ public class MainTest {
 		
 	}
 	
+	@Ignore
 	@Test
 	public void runApplicationWithCaching() {
 		List<LabelledUser> labelledUsers = DataCapture.readLabelledFile("src/test/resources/labelled10.txt");
