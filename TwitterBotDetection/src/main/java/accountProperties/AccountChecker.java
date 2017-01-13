@@ -117,18 +117,19 @@ public class AccountChecker {
 						.collect(Collectors.toList()));
 				
 				//If Redis Interface provided...
-				if (redisApi != null) {
-					for (User user : response) {
-						//Add to redis.
-						//TODO: Exception on existence of key, should not be in store since earlier check.
-						try {
-							cacheObject(redisApi, user);
-						} catch (JsonProcessingException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					}
-				}
+				//XXX:Re-enable caching.
+//				if (redisApi != null) {
+//					for (User user : response) {
+//						//Add to redis.
+//						//TODO: Exception on existence of key, should not be in store since earlier check.
+//						try {
+//							cacheObject(redisApi, user);
+//						} catch (JsonProcessingException e) {
+//							// TODO Auto-generated catch block
+//							e.printStackTrace();
+//						}
+//					}
+//				}
 			}
 			
 		}
@@ -227,18 +228,19 @@ public class AccountChecker {
 					.collect(Collectors.toList()));
 			
 			//If Redis Interface provided...
-			if (redisApi != null) {
-				for (Status status : response) {
-					//Add to redis.
-					//TODO: Exception on existence of key, should not be in store since earlier check.
-					try {
-						cacheObject(redisApi, status);
-					} catch (JsonProcessingException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-			}
+			//XXX:Re-enable caching.
+//			if (redisApi != null) {
+//				for (Status status : response) {
+//					//Add to redis.
+//					//TODO: Exception on existence of key, should not be in store since earlier check.
+//					try {
+//						cacheObject(redisApi, status);
+//					} catch (JsonProcessingException e) {
+//						// TODO Auto-generated catch block
+//						e.printStackTrace();
+//					}
+//				}
+//			}
 		}
 		
 		//Return the reduced list of Users.

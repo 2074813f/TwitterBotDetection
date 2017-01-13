@@ -6,11 +6,14 @@ import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.ml.classification.NaiveBayesModel;
+import org.apache.spark.ml.classification.RandomForestClassificationModel;
+import org.apache.spark.ml.classification.RandomForestClassifier;
 import org.apache.spark.sql.SparkSession;
 
 import com.lambdaworks.redis.api.sync.RedisCommands;
 
 import accountProperties.AccountChecker;
+import features.ProfileClassifier;
 import features.StatusClassifier;
 import models.LabelledUser;
 import models.UserProfile;
@@ -77,7 +80,9 @@ public class TwitterBotDetection {
 				.config("spark.master", "local")
 				.getOrCreate();
 		
-		NaiveBayesModel model = StatusClassifier.trainBayesClassifier(spark, users);
+		//NaiveBayesModel model = StatusClassifier.trainBayesClassifier(spark, users);
+		
+		RandomForestClassificationModel model = ProfileClassifier.train(spark, users);
 		
 		//logger.info("Extracted account features for {} users", features.size());
 		

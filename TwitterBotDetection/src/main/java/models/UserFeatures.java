@@ -1,28 +1,42 @@
 package models;
 
+import java.io.Serializable;
+
 /**
  * Contains a feature vector for a given user, referenced by id.
  * @author Adam
  *
  */
-public class UserFeatures {
-
-	private long id;					//Twitter user id
-	private int screenNameLength;		//Length of screen name
-	private float followerRatio;		//#Following/#Followers
+//TODO: @Deprecated - just add label and features directly to spark instance.
+public class UserFeatures implements Serializable {
 	
-	public long getId() {
-		return id;
+	private double label;
+//	private long id;					//Twitter user id
+//	private int screenNameLength;		//Length of screen name
+	//TODO: We need a spark vector here somehow.......
+	private float followerRatio;		//#Following/#Followers
+
+	public UserFeatures() {
 	}
-	public void setId(long id) {
-		this.id = id;
+	
+	public double getLabel() {
+		return label;
 	}
-	public int getScreenNameLength() {
-		return screenNameLength;
+	public void setLabel(double label) {
+		this.label = label;
 	}
-	public void setScreenNameLength(int screenNameLength) {
-		this.screenNameLength = screenNameLength;
-	}
+//	public long getId() {
+//		return id;
+//	}
+//	public void setId(long id) {
+//		this.id = id;
+//	}
+//	public int getScreenNameLength() {
+//		return screenNameLength;
+//	}
+//	public void setScreenNameLength(int screenNameLength) {
+//		this.screenNameLength = screenNameLength;
+//	}
 	public float getFollowerRatio() {
 		return followerRatio;
 	}
