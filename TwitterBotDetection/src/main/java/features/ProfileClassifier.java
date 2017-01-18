@@ -5,6 +5,7 @@ import tbd.TwitterBotDetection;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,8 +32,9 @@ import org.apache.spark.sql.types.StructType;
 import static org.apache.spark.sql.types.DataTypes.*;
 
 import models.LabelledStatus;
-import models.UserFeatures;
+import models.Features;
 import twitter4j.Twitter;
+import twitter4j.User;
 
 /**
  * Set of methods to extract features of account properties.
@@ -43,53 +45,54 @@ public class ProfileClassifier {
 	
 	static Logger logger = LogManager.getLogger(TwitterBotDetection.class);
 	
-	public static List<UserFeatures> extractFeatures(List<UserProfile> users) {
-		
-		if (users.isEmpty()) {
-			logger.error("No training data.");
-			return null;
-		}
-		
-		List<UserFeatures> features = new ArrayList<UserFeatures>();
-		
-		for (UserProfile user : users) {
-			
-			UserFeatures uf = new UserFeatures();
-			
-			//Set the label.
-			//Human = 0.0, Bot = 1.0
-			if (user.getLabel().compareTo("human") == 0) {
-				uf.setLabel(0.0);
-			}
-			else {
-				uf.setLabel(1.0);
-			}
-			
-			//Demographics
-			//	Account Health
-			//	Screen Name Length
-			//features.setScreenNameLength(user.getUser().getScreenName().length());
-			
-			//Content
-			//Network
-			//	#Following/#Followers
-			float ratio = (float)user.getUser().getFriendsCount() / user.getUser().getFollowersCount();
-			uf.setFollowerRatio(ratio);
-			
-			//	%Bidirectional friends
-			//TODO: Tackle without getting rate limited.
-			
-			//History
-			
-			//Add the user features to the collection.
-			features.add(uf);
-		}
-		
-		return features;
-	}
+//	public static List<Features> extractFeatures(List<UserProfile> users) {
+//		
+//		if (users.isEmpty()) {
+//			logger.error("No training data.");
+//			return null;
+//		}
+//		
+//		List<Features> features = new ArrayList<Features>();
+//		
+//		for (UserProfile user : users) {
+//			
+//			Features uf = new Features();
+//			
+//			//Set the label.
+//			//Human = 0.0, Bot = 1.0
+//			if (user.getLabel().compareTo("human") == 0) {
+//				uf.setLabel(0.0);
+//			}
+//			else {
+//				uf.setLabel(1.0);
+//			}
+//			
+//			//Demographics
+//			//	Account Health
+//			//	Screen Name Length
+//			uf.setScreenNameLength(user.getUser().getScreenName().length());
+//			
+//			//Content
+//			//Network
+//			//	#Following/#Followers
+//			float ratio = (float)user.getUser().getFriendsCount() / user.getUser().getFollowersCount();
+//			uf.setFollowerRatio(ratio);
+//			
+//			//	%Bidirectional friends
+//			//TODO: Tackle without getting rate limited.
+//			
+//			//History
+//			
+//			//Add the user features to the collection.
+//			features.add(uf);
+//		}
+//		
+//		return features;
+//	}
 	
 	public static RandomForestClassificationModel train(SparkSession spark, List<UserProfile> users) {
-		List<UserFeatures> features = extractFeatures(users);
+		//Collect the features from all users.
+		List<Features> features = users.stream().map(UserProfile::getFeatures).collect(Collectors.toList());
 		
 		logger.debug("Produced {} sets of features from {} users.", features.size(), users.size());
 		
@@ -97,17 +100,18 @@ public class ProfileClassifier {
 		return model;
 	}
 	
-	public static RandomForestClassificationModel trainRFClassifier(SparkSession spark, List<UserFeatures> features) {
+	public static RandomForestClassificationModel trainRFClassifier(SparkSession spark, List<Features> features) {
 		
-		Encoder<UserFeatures> featuresEncoder = Encoders.bean(UserFeatures.class);
-		Dataset<UserFeatures> rawData = spark.createDataset(features, featuresEncoder);
+		/*
+		 * Convert UserFeatures objects to Dataset<Row>, transforming features to
+		 * a Spark Vector.
+		 */
+		Encoder<Features> featuresEncoder = Encoders.bean(Features.class);
+		Dataset<Features> rawData = spark.createDataset(features, featuresEncoder);
 		rawData.show();
 		
-//		StructType schema = createStructType(new StructField[]{
-//				createStructField("followerRatio", DoubleType, false)
-//		});
 		VectorAssembler assembler = new VectorAssembler()
-				.setInputCols(new String[]{"followerRatio"})
+				.setInputCols(new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio"})
 				.setOutputCol("features");
 		Dataset<Row> data = assembler.transform(rawData);
 		data.show();

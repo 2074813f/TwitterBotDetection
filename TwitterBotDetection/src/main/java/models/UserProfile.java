@@ -17,9 +17,10 @@ import twitter4j.User;
  */
 public class UserProfile {
 	
-	private String label;
-	private User user;
-	private List<Status> statuses;
+	private String label;				//Class label (i.e. "Human", "Bot").
+	private User user;					//User profile object.
+	private Features features;			//Extracted features.
+	private List<Status> statuses;		//Statuses associated with the User.
 	
 	public UserProfile(String label, User user, List<Status> statuses) {
 		this.label = label;
@@ -72,5 +73,11 @@ public class UserProfile {
 	}
 	public void setLabel(String label) {
 		this.label = label;
+	}
+	public Features getFeatures() {
+		return features;
+	}
+	public void setFeatures(Features features) {
+		this.features = features;
 	}
 }

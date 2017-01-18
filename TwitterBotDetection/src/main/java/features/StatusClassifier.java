@@ -82,28 +82,6 @@ public class StatusClassifier {
 		return model;
 	}
 	
-	/**
-	 * Given a list of hydrated users, collect the statuses of these users.
-	 * 
-	 * @return
-	 */
-	private static List<LabelledStatus> collectStatuses(List<UserProfile> users) {
-		
-		//Map UserProfiles to label:status for training.
-		//NOTE: converts human->0, else->1 (need double labels)
-		List<LabelledStatus> statuses = new ArrayList<LabelledStatus>();
-		users.forEach(user -> user.getStatuses()
-				.forEach(status -> 
-					statuses.add(
-							new LabelledStatus(
-									((user.getLabel().compareTo("human") == 0) ? 0.0 : 1.0),
-									status.getText()
-							)
-				)));
-		
-		return statuses;
-	}
-	
 	private static List<LabelledStatus> collectSpamStatuses(List<UserProfile> users) {
 		//TODO:Consider that we should only use bots here, as this is for the training set.
 		

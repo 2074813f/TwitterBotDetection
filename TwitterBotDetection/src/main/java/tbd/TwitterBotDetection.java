@@ -13,6 +13,7 @@ import org.apache.spark.sql.SparkSession;
 import com.lambdaworks.redis.api.sync.RedisCommands;
 
 import accountProperties.AccountChecker;
+import features.FeatureExtractor;
 import features.ProfileClassifier;
 import features.StatusClassifier;
 import models.LabelledUser;
@@ -45,6 +46,7 @@ public class TwitterBotDetection {
 		//users = AccountChecker.filter_accessible(twitter, users);
 		//logger.info("Reduced to {} usable users.", users.size());
 		
+		//ENTITY COLLECTION
 		//FOR LABELLED
 		List<LabelledUser> labelledUsers = DataCapture.readLabelledFile(filename);
 		List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, labelledUsers);
@@ -67,6 +69,7 @@ public class TwitterBotDetection {
 		Map<Long, UserProfile> mappedUsers = new HashMap<Long, UserProfile>();
 		users.stream().forEach(user -> mappedUsers.put(user.getUser().getId(), user));
 		
+		//For each status find matching userid and add to UserProfile
 		statuses.stream().forEach(status -> {
 			long userid = status.getUser().getId();
 			UserProfile user = mappedUsers.get(userid);
@@ -79,6 +82,9 @@ public class TwitterBotDetection {
 				.appName("Example")
 				.config("spark.master", "local")
 				.getOrCreate();
+		
+		//FEATURE EXTRACTION
+		FeatureExtractor.extractFeatures(users);
 		
 		//NaiveBayesModel model = StatusClassifier.trainBayesClassifier(spark, users);
 		

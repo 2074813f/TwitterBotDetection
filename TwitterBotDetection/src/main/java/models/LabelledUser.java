@@ -8,6 +8,8 @@ import java.util.List;
  * has labelled users, and has ids for the user and a number of
  * their statuses.
  * 
+ * Contains a userid and a list of associated statusids.
+ * 
  * @author Adam
  *
  */
