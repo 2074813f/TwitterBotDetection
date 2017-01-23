@@ -118,18 +118,18 @@ public class AccountChecker {
 				
 				//If Redis Interface provided...
 				//XXX:Re-enable caching.
-//				if (redisApi != null) {
-//					for (User user : response) {
-//						//Add to redis.
-//						//TODO: Exception on existence of key, should not be in store since earlier check.
-//						try {
-//							cacheObject(redisApi, user);
-//						} catch (JsonProcessingException e) {
-//							// TODO Auto-generated catch block
-//							e.printStackTrace();
-//						}
-//					}
-//				}
+				if (redisApi != null) {
+					for (User user : response) {
+						//Add to redis.
+						//TODO: Exception on existence of key, should not be in store since earlier check.
+						try {
+							cacheObject(redisApi, user);
+						} catch (JsonProcessingException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+				}
 			}
 			
 		}
@@ -229,18 +229,18 @@ public class AccountChecker {
 			
 			//If Redis Interface provided...
 			//XXX:Re-enable caching.
-//			if (redisApi != null) {
-//				for (Status status : response) {
-//					//Add to redis.
-//					//TODO: Exception on existence of key, should not be in store since earlier check.
-//					try {
-//						cacheObject(redisApi, status);
-//					} catch (JsonProcessingException e) {
-//						// TODO Auto-generated catch block
-//						e.printStackTrace();
-//					}
-//				}
-//			}
+			if (redisApi != null) {
+				for (Status status : response) {
+					//Add to redis.
+					//TODO: Exception on existence of key, should not be in store since earlier check.
+					try {
+						cacheObject(redisApi, status);
+					} catch (JsonProcessingException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			}
 		}
 		
 		//Return the reduced list of Users.
@@ -356,14 +356,15 @@ public class AccountChecker {
 		//If object is a User...
 		if (o instanceof User) {
 			User user = (User) o;
-			String marshalledUser = mapper.writeValueAsString(user);
+			//String marshalledUser = mapper.writeValueAsString(user);
+			String marshalledUser = TwitterObjectFactory.getRawJSON(user);
 			redisApi.set("user:"+user.getId(), marshalledUser);
 		}
 		//If object is a status...
 		else if (o instanceof Status) {
 			Status status = (Status) o;
-			String marshalledStatus = mapper.writeValueAsString(status);
-			//XXX: String marshalledStatus = TwitterObjectFactory.getRawJSON(status);
+			//String marshalledStatus = mapper.writeValueAsString(status);
+			String marshalledStatus = TwitterObjectFactory.getRawJSON(status);
 			redisApi.set("status:"+status.getId(), marshalledStatus);
 		}
 		//Else don't know how to store.

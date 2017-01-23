@@ -30,11 +30,12 @@ public class TwitterConfig {
 			  .setOAuthConsumerKey(oathConsumerKey)
 			  .setOAuthConsumerSecret(oathConsumerKeySecret)
 			  .setOAuthAccessToken(oathAccessToken)
-			  .setOAuthAccessTokenSecret(oathAccessTokenSecret);
+			  .setOAuthAccessTokenSecret(oathAccessTokenSecret)
+			  .setJSONStoreEnabled(true);
 			
 			
-			OAuthAuthorization auth = new OAuthAuthorization(cb.build());
-			Twitter twitter = new TwitterFactory().getInstance(auth);
+			TwitterFactory tf = new TwitterFactory(cb.build());
+			Twitter twitter = tf.getInstance();
 			
 			User user = twitter.verifyCredentials();
 			
