@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -61,7 +62,7 @@ public class AccountChecker {
 			//Check for cached users.
 			for (LabelledUser user : users) {
 				String returned = redisApi.get("user:" + user.getUserId());
-				if (returned != null) {
+				if (returned != null && returned != "null") {
 					try {
 						//Unmarshell User.
 						User returnedUser = TwitterObjectFactory.createUser(returned);
@@ -122,12 +123,7 @@ public class AccountChecker {
 					for (User user : response) {
 						//Add to redis.
 						//TODO: Exception on existence of key, should not be in store since earlier check.
-						try {
-							cacheObject(redisApi, user);
-						} catch (JsonProcessingException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
+						cacheObject(redisApi, user);
 					}
 				}
 			}
@@ -147,23 +143,25 @@ public class AccountChecker {
 	 * @return
 	 */
 	public static List<Status> getStatuses(Twitter twitter, RedisCommands<String, String> redisApi, List<LabelledUser> users) {
+		//Number of statuses per user to limit to, or -1 if no limit.
+		int limitStatuses = 10;
+		
 		List<Status> result = new ArrayList<Status>();
 		
+		//Merge all statuses into single list.
 		List<Long> allStatusIds = new ArrayList<Long>();
 		for (LabelledUser user : users) {
-			//XXX: waaaay too many statuses for some users, gonna get rate limited.
-			//	Trimmed arbitrarily to 10 statuses per user.
 			List<Long> userStatuses = user.getStatusIds();
-			if (userStatuses.size() <= 10) {
+			
+			//If limiting and num statuses exceeds limit, then trim.
+			if (limitStatuses > 0 && userStatuses.size() >= limitStatuses) {
+				allStatusIds.addAll(userStatuses.subList(0, limitStatuses));
+			}
+			else {
 				//TODO: fill to threshold from twitter.
 				allStatusIds.addAll(userStatuses);
 			}
-			else {
-				allStatusIds.addAll(userStatuses.subList(0, 10));
-			}
 		}
-		
-		logger.info("Checking for cached statuses...");
 		
 		//TODO: Consider parallel streams.
 		//Check for Statuses in cache and collect if exists.
@@ -172,10 +170,15 @@ public class AccountChecker {
 		
 		//If Redis Interface provided...
 		if (redisApi != null) {
+			logger.info("Checking for cached statuses...");
+			
 			//Check for cached statuses.
 			for (Long status : allStatusIds) {
 				String returned = redisApi.get("status:" + status);
+				
+				//If the key exists.
 				if (returned != null) {
+					if (returned.compareTo("null") != 0) {
 					try {
 						//Unmarshell Status.
 						Status returnedStatus = TwitterObjectFactory.createStatus(returned);
@@ -186,6 +189,7 @@ public class AccountChecker {
 					catch (TwitterException e) {
 						e.printStackTrace();
 						//throw new RuntimeException("Failed to unmarshall Status from Redis.");
+					}
 					}
 				}
 				else {
@@ -220,24 +224,27 @@ public class AccountChecker {
 					.mapToLong(Long::longValue)	//Note: need to map to Long object before toArray().
 					.toArray();
 			
-			//Do the lookup
+			//Do the lookup.
 			ResponseList<Status> response = lookupStatuses(twitter, statusIds);
 			
-			//Add the results, setting the label from mappedUsers.
-			result.addAll(response.stream()
-					.collect(Collectors.toList()));
+			//Add the results.
+			result.addAll(response.stream().collect(Collectors.toList()));
 			
 			//If Redis Interface provided...
-			//XXX:Re-enable caching.
 			if (redisApi != null) {
-				for (Status status : response) {
-					//Add to redis.
-					//TODO: Exception on existence of key, should not be in store since earlier check.
-					try {
+				//Iterate through all statuses, cache object if in results or cache null
+				//if not in results.
+				//TODO: Simplify/Reduce overhead.
+				Map<Long, Status> mappedResponse = response.stream()
+						.collect(Collectors.toMap(Status::getId, s -> s));
+				
+				for(Long statusId : statusIds) {
+					Status status = mappedResponse.get(statusId);
+					if (status != null) {
 						cacheObject(redisApi, status);
-					} catch (JsonProcessingException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+					}
+					else {
+						cacheNullRef(redisApi, "status:"+statusId);
 					}
 				}
 			}
@@ -303,7 +310,7 @@ public class AccountChecker {
 	 * @param user
 	 */
 	private static ResponseList<Status> lookupStatuses(Twitter twitter, long[] statusIds) {
-		//TODO: consider futures
+		//TODO: consider futures	
 		//If rate limit reached, we continue attempting after waiting.
 		while(true) {
 			try {
@@ -352,24 +359,41 @@ public class AccountChecker {
 	 * @param o
 	 * @throws JsonProcessingException
 	 */
-	private static void cacheObject(RedisCommands<String, String> redisApi, Object o) throws JsonProcessingException {
+	private static void cacheObject(RedisCommands<String, String> redisApi, Object o) {
 		//If object is a User...
 		if (o instanceof User) {
 			User user = (User) o;
-			//String marshalledUser = mapper.writeValueAsString(user);
 			String marshalledUser = TwitterObjectFactory.getRawJSON(user);
 			redisApi.set("user:"+user.getId(), marshalledUser);
 		}
 		//If object is a status...
 		else if (o instanceof Status) {
 			Status status = (Status) o;
-			//String marshalledStatus = mapper.writeValueAsString(status);
 			String marshalledStatus = TwitterObjectFactory.getRawJSON(status);
 			redisApi.set("status:"+status.getId(), marshalledStatus);
 		}
 		//Else don't know how to store.
 		else {
 			throw new RuntimeException(String.format("Don't know how to store %s object.", o.getClass().getName()));
+		}
+	}
+	
+	/**
+	 * Cache the String "null" against a given key, to indicate that the object
+	 * was not retrievable from Twitter, i.e. it was "looked-up" but not found.
+	 * 
+	 * @param redisApi - Redis instance API
+	 * @param key - the key 
+	 */
+	private static void cacheNullRef(RedisCommands<String, String> redisApi, String key) {
+		//TODO: identify object type automatically as with cacheObject and abstract key concat.
+		
+		//If we are given a reference as a key for Redis, then store.
+		if (key != null) {
+			redisApi.set(key, "null");
+		}
+		else {
+			throw new RuntimeException(String.format("Key cannot be null!"));
 		}
 	}
 }
