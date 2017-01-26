@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
@@ -38,15 +39,8 @@ public class FeatureExtractor {
 			
 			Features features = new Features();
 			
-			//TODO: Translate labels at time of classification
 			//Set the label.
-			//Human = 0.0, Bot = 1.0
-			if (user.getLabel().compareTo("human") == 0) {
-				features.setLabel(0.0);
-			}
-			else {
-				features.setLabel(1.0);
-			}
+			features.setLabel(user.getLabel());
 			
 			//##### Profile Features #####
 			//Demographics
@@ -107,10 +101,12 @@ public class FeatureExtractor {
 		
 		int numStatuses = user.getStatuses().size();
 		
+		//If there are no statuses we cannot do work.
 		if (numStatuses == 0) {
 			features.setUrlRatio(-1.0F);
 			features.setHashtagRatio(-1.0F);
 			features.setMentionRatio(-1.0F);
+			features.setMainDevice("");
 			return;
 		};
 		
@@ -145,8 +141,20 @@ public class FeatureExtractor {
 		
 		features.setMentionRatio((float)numMentions / numStatuses);
 		
-//		clientDevices.entrySet().stream().max((entry1, entry2) -> 
-//		Integer.compare(entry1.getValue(), entry2.getValue())).getKey();
+		//Find the most frequemtly used device
+		int highestCount = -1;
+		String highestDevice = "";		//XXX:Consider using null instead.
+		
+		for (Entry<String, Integer> entry : clientDevices.entrySet()) {
+			int currentValue = entry.getValue();
+			
+			if (currentValue > highestCount) {
+				highestCount = currentValue;
+				highestDevice = entry.getKey();
+			}
+		}
+		
+		features.setMainDevice(highestDevice);
 	}
 
 }

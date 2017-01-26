@@ -10,22 +10,22 @@ import java.io.Serializable;
 //TODO: @Deprecated - just add label and features directly to spark instance.
 public class Features implements Serializable {
 	
-	private double label;
+	private String label;
 	
 	private int screenNameLength;		//Length of screen name
 	private float followerRatio;		//#Following/#Followers
 	private float urlRatio;
 	private float hashtagRatio;
 	private float mentionRatio;
-	//TODO:private float mainDevice;
+	private String mainDevice;
 
 	public Features() {
 	}
 	
-	public double getLabel() {
+	public String getLabel() {
 		return label;
 	}
-	public void setLabel(double label) {
+	public void setLabel(String label) {
 		this.label = label;
 	}
 	public int getScreenNameLength() {
@@ -57,5 +57,11 @@ public class Features implements Serializable {
 	}
 	public void setMentionRatio(float mentionRatio) {
 		this.mentionRatio = mentionRatio;
+	}
+	public String getMainDevice() {
+		return mainDevice;
+	}
+	public void setMainDevice(String mainDevice) {
+		this.mainDevice = mainDevice;
 	}
 }

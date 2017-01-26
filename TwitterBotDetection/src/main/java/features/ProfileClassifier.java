@@ -21,6 +21,7 @@ import org.apache.spark.ml.feature.StringIndexerModel;
 import org.apache.spark.ml.feature.VectorAssembler;
 import org.apache.spark.ml.feature.VectorIndexer;
 import org.apache.spark.ml.feature.VectorIndexerModel;
+import org.apache.spark.mllib.evaluation.MulticlassMetrics;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Encoders;
@@ -45,51 +46,6 @@ public class ProfileClassifier {
 	
 	static Logger logger = LogManager.getLogger(TwitterBotDetection.class);
 	
-//	public static List<Features> extractFeatures(List<UserProfile> users) {
-//		
-//		if (users.isEmpty()) {
-//			logger.error("No training data.");
-//			return null;
-//		}
-//		
-//		List<Features> features = new ArrayList<Features>();
-//		
-//		for (UserProfile user : users) {
-//			
-//			Features uf = new Features();
-//			
-//			//Set the label.
-//			//Human = 0.0, Bot = 1.0
-//			if (user.getLabel().compareTo("human") == 0) {
-//				uf.setLabel(0.0);
-//			}
-//			else {
-//				uf.setLabel(1.0);
-//			}
-//			
-//			//Demographics
-//			//	Account Health
-//			//	Screen Name Length
-//			uf.setScreenNameLength(user.getUser().getScreenName().length());
-//			
-//			//Content
-//			//Network
-//			//	#Following/#Followers
-//			float ratio = (float)user.getUser().getFriendsCount() / user.getUser().getFollowersCount();
-//			uf.setFollowerRatio(ratio);
-//			
-//			//	%Bidirectional friends
-//			//TODO: Tackle without getting rate limited.
-//			
-//			//History
-//			
-//			//Add the user features to the collection.
-//			features.add(uf);
-//		}
-//		
-//		return features;
-//	}
-	
 	public static RandomForestClassificationModel train(SparkSession spark, List<UserProfile> users) {
 		//Collect the features from all users.
 		List<Features> features = users.stream().map(UserProfile::getFeatures).collect(Collectors.toList());
@@ -110,10 +66,17 @@ public class ProfileClassifier {
 		Dataset<Features> rawData = spark.createDataset(features, featuresEncoder);
 		rawData.show();
 		
+		// Index the mainDevice column.
+		StringIndexerModel sourceIndexer = new StringIndexer()
+			.setInputCol("mainDevice")
+			.setOutputCol("indexedMainDevice")
+			.fit(rawData);
+		Dataset<Row> indexedData = sourceIndexer.transform(rawData);
+		
 		VectorAssembler assembler = new VectorAssembler()
-				.setInputCols(new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio"})
+				.setInputCols(new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "indexedMainDevice"})
 				.setOutputCol("features");
-		Dataset<Row> data = assembler.transform(rawData);
+		Dataset<Row> data = assembler.transform(indexedData);
 		data.show();
 	
 		// Index labels, adding metadata to the label column.
@@ -131,7 +94,7 @@ public class ProfileClassifier {
 		VectorIndexerModel featureIndexer = new VectorIndexer()
 		  .setInputCol("features")
 		  .setOutputCol("indexedFeatures")
-		  .setMaxCategories(4)
+//		  .setMaxCategories(4)
 		  .fit(data);
 	
 		// Split the data into training and test sets (30% held out for testing)
@@ -171,9 +134,15 @@ public class ProfileClassifier {
 		
 		double accuracy = evaluator.evaluate(predictions);
 		logger.info("Test Error = {}", (1.0 - accuracy));
+		
+		Dataset<Row> predictionAndLabels = predictions.select("prediction", "indexedLabel");
+		MulticlassMetrics metrics = new MulticlassMetrics(predictionAndLabels);
+		
+		System.out.println("Accuracy: " + metrics.accuracy());
+		System.out.format("Confusion Matrix: \n%s\n\n", metrics.confusionMatrix().toString());
 	
 		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)(model.stages()[2]);
-		logger.info("Learned classification forest model: {}\n", rfModel.toDebugString());
+		//logger.info("Learned classification forest model: {}\n", rfModel.toDebugString());
 		
 		return rfModel;
 	}
