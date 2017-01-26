@@ -134,8 +134,9 @@ public class DataCapture {
 		}
 		catch (IOException e) {
 			logger.error("Error reading input file.");
-		        System.exit(-1);
-                }
+			e.printStackTrace();
+		    System.exit(-1);
+        }
 		
 		return labelledUsers;
 	}

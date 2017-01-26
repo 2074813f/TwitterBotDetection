@@ -64,7 +64,12 @@ public class ProfileClassifier {
 		 */
 		Encoder<Features> featuresEncoder = Encoders.bean(Features.class);
 		Dataset<Features> rawData = spark.createDataset(features, featuresEncoder);
-		rawData.show();
+		
+		//Show the non-truncated devices for debugging.
+		//rawData.select("mainDevice").show(20, false);
+		
+		//TODO: Should drop elements where we have no statuses before train..() called.
+		//rawData = rawData.filter(rawData.col("urlRatio").gt(0));
 		
 		// Index the mainDevice column.
 		StringIndexerModel sourceIndexer = new StringIndexer()
@@ -73,6 +78,7 @@ public class ProfileClassifier {
 			.fit(rawData);
 		Dataset<Row> indexedData = sourceIndexer.transform(rawData);
 		
+		// Assemble the features into a vector for classification.
 		VectorAssembler assembler = new VectorAssembler()
 				.setInputCols(new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "indexedMainDevice"})
 				.setOutputCol("features");
@@ -86,15 +92,14 @@ public class ProfileClassifier {
 		  .setOutputCol("indexedLabel")
 		  .fit(data);
 		
-		//XXX: NOTE: we don't have any categorical features thus far.
-		//     see:https://en.wikipedia.org/wiki/Categorical_variable
+		// see:https://en.wikipedia.org/wiki/Categorical_variable
 		//	   (Essentially an enumerable variable).
 		// Automatically identify categorical features, and index them.
 		// Set maxCategories so features with > 4 distinct values are treated as continuous.
 		VectorIndexerModel featureIndexer = new VectorIndexer()
 		  .setInputCol("features")
 		  .setOutputCol("indexedFeatures")
-//		  .setMaxCategories(4)
+		  .setMaxCategories(4)
 		  .fit(data);
 	
 		// Split the data into training and test sets (30% held out for testing)
@@ -103,9 +108,11 @@ public class ProfileClassifier {
 		Dataset<Row> testData = splits[1];
 	
 		// Train a RandomForest model.
+		//NOTE: need to increase the maximum number of bins for larger datasets for device types.
 		RandomForestClassifier rf = new RandomForestClassifier()
 		  .setLabelCol("indexedLabel")
 		  .setFeaturesCol("indexedFeatures");
+		  //.setMaxBins(60);
 	
 		// Convert indexed labels back to original labels.
 		IndexToString labelConverter = new IndexToString()
@@ -133,15 +140,17 @@ public class ProfileClassifier {
 		  .setMetricName("accuracy");
 		
 		double accuracy = evaluator.evaluate(predictions);
-		logger.info("Test Error = {}", (1.0 - accuracy));
+		logger.debug("Test Error = {}", (1.0 - accuracy));
 		
 		Dataset<Row> predictionAndLabels = predictions.select("prediction", "indexedLabel");
 		MulticlassMetrics metrics = new MulticlassMetrics(predictionAndLabels);
 		
-		System.out.println("Accuracy: " + metrics.accuracy());
-		System.out.format("Confusion Matrix: \n%s\n\n", metrics.confusionMatrix().toString());
+		logger.debug("Accuracy: {}", metrics.accuracy());
+		logger.debug("Confusion Matrix: \n{}", metrics.confusionMatrix().toString());
 	
 		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)(model.stages()[2]);
+		
+		logger.debug("Feature importance: {}", rfModel.featureImportances());
 		//logger.info("Learned classification forest model: {}\n", rfModel.toDebugString());
 		
 		return rfModel;

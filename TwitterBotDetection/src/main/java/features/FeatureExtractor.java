@@ -106,7 +106,7 @@ public class FeatureExtractor {
 			features.setUrlRatio(-1.0F);
 			features.setHashtagRatio(-1.0F);
 			features.setMentionRatio(-1.0F);
-			features.setMainDevice("");
+			features.setMainDevice("NA");
 			return;
 		};
 		
@@ -143,7 +143,7 @@ public class FeatureExtractor {
 		
 		//Find the most frequemtly used device
 		int highestCount = -1;
-		String highestDevice = "";		//XXX:Consider using null instead.
+		String highestDevice = "NA";		//XXX:Consider using null instead.
 		
 		for (Entry<String, Integer> entry : clientDevices.entrySet()) {
 			int currentValue = entry.getValue();
