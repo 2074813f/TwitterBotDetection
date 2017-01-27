@@ -58,6 +58,9 @@ public class ProfileClassifier {
 	
 	public static RandomForestClassificationModel trainRFClassifier(SparkSession spark, List<Features> features) {
 		
+		long seed = 207336481L;
+		logger.info("Training with seed: {}", seed);
+		
 		/*
 		 * Convert UserFeatures objects to Dataset<Row>, transforming features to
 		 * a Spark Vector.
@@ -111,7 +114,9 @@ public class ProfileClassifier {
 		//NOTE: need to increase the maximum number of bins for larger datasets for device types.
 		RandomForestClassifier rf = new RandomForestClassifier()
 		  .setLabelCol("indexedLabel")
-		  .setFeaturesCol("indexedFeatures");
+		  .setFeaturesCol("indexedFeatures")
+		  .setSeed(seed)
+		  .setNumTrees(60);
 		  //.setMaxBins(60);
 	
 		// Convert indexed labels back to original labels.
@@ -131,7 +136,14 @@ public class ProfileClassifier {
 		Dataset<Row> predictions = model.transform(testData);
 	
 		// Select example rows to display.
-		predictions.select("predictedLabel", "label", "features").show(5);
+		//XXX: select rows where we incorrectly classify
+		Dataset<Row> results = predictions.select("predictedLabel", "label", "features");
+		
+		//Show and write to disk.
+		//TODO: Fix HADOOP_HOME install: http://stackoverflow.com/questions/34697744/spark-1-6-failed-to-locate-the-winutils-binary-in-the-hadoop-binary-path
+		//String path = String.format("src/main/resources/results%s.csv", seed);
+		results.show(false);
+		//results.write().csv(path);
 	
 		// Select (prediction, true label) and compute test error
 		MulticlassClassificationEvaluator evaluator = new MulticlassClassificationEvaluator()
