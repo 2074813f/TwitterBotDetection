@@ -328,12 +328,12 @@ public class AccountChecker {
 				}
 				//Rate limit exceeded, back off, wait, and try again.
 				else if (e.getStatusCode() == 429 || e.getErrorCode() == 88){
-					logger.info("Rate limit exceeded");
+					logger.info("Rate limit exceeded, waiting...");
 					
 					try {
 						//Get the recommended wait time and sleep until then.
 						int retryafter = e.getRetryAfter();
-						Thread.sleep(retryafter / 1000);
+						Thread.sleep(retryafter * 1000);		//Convert from s -> ms
 					}
 					catch (InterruptedException i) {
 						logger.error("Sleeping thread interrupted for some reason ??? aborting.");
@@ -341,6 +341,25 @@ public class AccountChecker {
 					}
 					
 					//Try again.
+					logger.info("Rate limit refreshed, restarting.");
+					continue;
+				}
+				//Twitter overloaded, wait and retry.
+				else if (e.getStatusCode() == 503) {
+					logger.info("Twitter overloaded, pausing execution...");
+					
+					try {
+						//Get the recommended wait time and sleep until then.
+						int delay = 3000;		//Arbitrary delay of 3s
+						Thread.sleep(delay);
+					}
+					catch (InterruptedException i) {
+						logger.error("Sleeping thread interrupted for some reason ??? aborting.");
+						throw new RuntimeException();
+					}
+					
+					//Try again.
+					logger.info("Retrying Twitter service.");
 					continue;
 				}
 				else {

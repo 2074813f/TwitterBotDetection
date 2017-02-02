@@ -141,9 +141,9 @@ public class FeatureExtractor {
 		
 		features.setMentionRatio((float)numMentions / numStatuses);
 		
-		//Find the most frequemtly used device
+		//Find the most frequently used device
 		int highestCount = -1;
-		String highestDevice = "NA";		//XXX:Consider using null instead.
+		String highestDevice = "NA";
 		
 		for (Entry<String, Integer> entry : clientDevices.entrySet()) {
 			int currentValue = entry.getValue();

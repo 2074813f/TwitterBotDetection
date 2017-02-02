@@ -16,6 +16,7 @@ import org.apache.spark.ml.classification.RandomForestClassificationModel;
 import org.apache.spark.ml.classification.RandomForestClassifier;
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator;
 import org.apache.spark.ml.feature.IndexToString;
+import org.apache.spark.ml.feature.OneHotEncoder;
 import org.apache.spark.ml.feature.StringIndexer;
 import org.apache.spark.ml.feature.StringIndexerModel;
 import org.apache.spark.ml.feature.VectorAssembler;
@@ -81,6 +82,12 @@ public class ProfileClassifier {
 			.fit(rawData);
 		Dataset<Row> indexedData = sourceIndexer.transform(rawData);
 		
+		//Convert label indices -> vectors to reduce bins
+//		OneHotEncoder encoder = new OneHotEncoder()
+//				.setInputCol("indexedMainDevice")
+//				.setOutputCol("mainDeviceVec");
+//		indexedData = encoder.transform(indexedData);
+		
 		// Assemble the features into a vector for classification.
 		VectorAssembler assembler = new VectorAssembler()
 				.setInputCols(new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "indexedMainDevice"})
@@ -104,9 +111,11 @@ public class ProfileClassifier {
 		  .setOutputCol("indexedFeatures")
 		  .setMaxCategories(4)
 		  .fit(data);
+//		Dataset<Row> test = featureIndexer.transform(data);
+//		test.select("indexedFeatures").show(false);
 	
 		// Split the data into training and test sets (30% held out for testing)
-		Dataset<Row>[] splits = data.randomSplit(new double[] {0.7, 0.3});
+		Dataset<Row>[] splits = data.randomSplit(new double[] {0.7, 0.3}, seed);
 		Dataset<Row> trainingData = splits[0];
 		Dataset<Row> testData = splits[1];
 	
@@ -116,8 +125,8 @@ public class ProfileClassifier {
 		  .setLabelCol("indexedLabel")
 		  .setFeaturesCol("indexedFeatures")
 		  .setSeed(seed)
-		  .setNumTrees(60);
-		  //.setMaxBins(60);
+		  .setNumTrees(60)
+		  .setMaxBins(300);
 	
 		// Convert indexed labels back to original labels.
 		IndexToString labelConverter = new IndexToString()
@@ -137,13 +146,14 @@ public class ProfileClassifier {
 	
 		// Select example rows to display.
 		//XXX: select rows where we incorrectly classify
-		Dataset<Row> results = predictions.select("predictedLabel", "label", "features");
+//		Dataset<Row> results = predictions.select("predictedLabel", "label", "mainDevice");
 		
-		//Show and write to disk.
-		//TODO: Fix HADOOP_HOME install: http://stackoverflow.com/questions/34697744/spark-1-6-failed-to-locate-the-winutils-binary-in-the-hadoop-binary-path
-		//String path = String.format("src/main/resources/results%s.csv", seed);
-		results.show(false);
-		//results.write().csv(path);
+		//Write results of evaluation to disk.
+//		String path = String.format("src/main/resources/results", seed);
+//		results.select("predictedLabel", "label", "mainDevice")
+//			.write()
+//			.option("header", "true")
+//			.csv(path);
 	
 		// Select (prediction, true label) and compute test error
 		MulticlassClassificationEvaluator evaluator = new MulticlassClassificationEvaluator()

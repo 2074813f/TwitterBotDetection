@@ -79,7 +79,7 @@ public class TwitterBotDetection {
 		//Create the spark session.
 		SparkSession spark = SparkSession
 				.builder()
-				.appName("Example")
+				.appName("TwitterBotDetection")
 				.config("spark.master", "local")
 				.getOrCreate();
 		
