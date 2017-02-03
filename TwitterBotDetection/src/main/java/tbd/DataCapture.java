@@ -102,6 +102,7 @@ public class DataCapture {
 	public static List<LabelledUser> readLabelledFile(String filename) {
 		
 		List<LabelledUser> labelledUsers = new ArrayList<LabelledUser>();	//Temp. set of users, to be populated as UserProfiles
+		int lc = 0;
 		
 		/* Read in a file line by line.
 		 * Read each user as a LabeledUser, which contains only ids
@@ -111,6 +112,7 @@ public class DataCapture {
 			logger.info("Reading from classified file {}...", filename);	
 	
 			String line = reader.readLine();								//Current line.
+			
 			
 			while (line != null) {
 				String[] tokens = line.split(" ");
@@ -128,6 +130,8 @@ public class DataCapture {
 				labelledUsers.add(newUser);
 				
 				line = reader.readLine();
+				
+				lc++;
 			}
 			
 			logger.info("Obtained {} labelled users.", labelledUsers.size());
@@ -137,6 +141,11 @@ public class DataCapture {
 			e.printStackTrace();
 		    System.exit(-1);
         }
+		catch (NumberFormatException e) {
+			logger.error("Error at line: {}", lc);
+			e.printStackTrace();
+			System.exit(-1);
+		}
 		
 		return labelledUsers;
 	}

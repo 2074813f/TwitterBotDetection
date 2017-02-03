@@ -143,27 +143,28 @@ public class AccountChecker {
 	 * @return
 	 */
 	public static List<Status> getStatuses(Twitter twitter, RedisCommands<String, String> redisApi, List<LabelledUser> users) {
+		//TODO: add param to fill statuses to the limit for each user, not just relying on those listed in the file.
+		
 		//Number of statuses per user to limit to, or -1 if no limit.
-		int limitStatuses = 10;
+		int statusLimit = 10;
 		
 		List<Status> result = new ArrayList<Status>();
 		
+		//TODO: Add unit testing for status retrieval for e.g. x>limit, x=limit, x<limit
 		//Merge all statuses into single list.
 		List<Long> allStatusIds = new ArrayList<Long>();
 		for (LabelledUser user : users) {
 			List<Long> userStatuses = user.getStatusIds();
 			
 			//If limiting and num statuses exceeds limit, then trim.
-			if (limitStatuses > 0 && userStatuses.size() >= limitStatuses) {
-				allStatusIds.addAll(userStatuses.subList(0, limitStatuses));
+			if (statusLimit > 0 && userStatuses.size() >= statusLimit) {
+				allStatusIds.addAll(userStatuses.subList(0, statusLimit));
 			}
 			else {
-				//TODO: fill to threshold from twitter.
 				allStatusIds.addAll(userStatuses);
 			}
 		}
 		
-		//TODO: Consider parallel streams.
 		//Check for Statuses in cache and collect if exists.
 		//TODO:Iterate in a safe way.
 		List<Long> notFound = new ArrayList<Long>();
@@ -209,7 +210,7 @@ public class AccountChecker {
 		while (index < notFound.size()) {
 			List<Long> toBeProcessed;	//View of sublist of <=Status ids
 			
-			//Take up to 100 users at a time, bounded by size of list.
+			//Take up to 100 statuses at a time, bounded by size of list.
 			if (index+100 < notFound.size()) {
 				toBeProcessed = notFound.subList(index, index+100);
 				index += 100;
@@ -219,7 +220,7 @@ public class AccountChecker {
 				index = notFound.size();
 			}
 			
-			//Get the ids of a subset of users to check.
+			//Get the ids of a subset of statuses to check.
 			long[] statusIds = toBeProcessed.stream()
 					.mapToLong(Long::longValue)	//Note: need to map to Long object before toArray().
 					.toArray();
@@ -250,6 +251,12 @@ public class AccountChecker {
 			}
 		}
 		
+		//TODO
+		//If maxStatuses == true then we iterate through users with non-max statuses and:
+		//	1. retrieve timelines 
+		//	2. trim to statusLimit
+		//	3. cache
+		
 		//Return the reduced list of Users.
 		return result;
 	}
@@ -263,6 +270,7 @@ public class AccountChecker {
 	 */
 	private static ResponseList<User> lookupUsers(Twitter twitter, long[] userIds) throws RuntimeException {
 		//TODO: consider futures
+		//TODO: either move batching here or check the size of the array < 100.
 		//If rate limit reached, we continue attempting after waiting.
 		while(true) {
 			try {
@@ -369,6 +377,7 @@ public class AccountChecker {
 			}
 		}
 	}
+
 
 	/**
 	 * Cache an object into a Redis server given a Redis API

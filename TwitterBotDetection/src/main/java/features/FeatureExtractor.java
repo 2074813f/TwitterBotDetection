@@ -39,7 +39,8 @@ public class FeatureExtractor {
 			
 			Features features = new Features();
 			
-			//Set the label.
+			//Set the label and id.
+			features.setId(user.getUser().getId());
 			features.setLabel(user.getLabel());
 			
 			//##### Profile Features #####
@@ -155,6 +156,7 @@ public class FeatureExtractor {
 		}
 		
 		features.setMainDevice(highestDevice);
+		features.setUniqueDevices(clientDevices.size());
 	}
 
 }

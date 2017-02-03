@@ -4,6 +4,7 @@ import models.UserProfile;
 import tbd.TwitterBotDetection;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -59,8 +60,10 @@ public class ProfileClassifier {
 	
 	public static RandomForestClassificationModel trainRFClassifier(SparkSession spark, List<Features> features) {
 		
-		long seed = 207336481L;
+		long seed = 207335481L;
 		logger.info("Training with seed: {}", seed);
+		
+		String[] rawFeatures = new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "indexedMainDevice"};
 		
 		/*
 		 * Convert UserFeatures objects to Dataset<Row>, transforming features to
@@ -90,7 +93,7 @@ public class ProfileClassifier {
 		
 		// Assemble the features into a vector for classification.
 		VectorAssembler assembler = new VectorAssembler()
-				.setInputCols(new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "indexedMainDevice"})
+				.setInputCols(rawFeatures)
 				.setOutputCol("features");
 		Dataset<Row> data = assembler.transform(indexedData);
 		data.show();
@@ -146,11 +149,13 @@ public class ProfileClassifier {
 	
 		// Select example rows to display.
 		//XXX: select rows where we incorrectly classify
-//		Dataset<Row> results = predictions.select("predictedLabel", "label", "mainDevice");
+		Dataset<Row> results = predictions.select("id", "predictedLabel", "label", "mainDevice");
+		//results.show(false);
 		
 		//Write results of evaluation to disk.
-//		String path = String.format("src/main/resources/results", seed);
-//		results.select("predictedLabel", "label", "mainDevice")
+//		Long datetime = new Date().getTime();
+//		String path = String.format("src/main/resources/results/%s", "honeypot");
+//		results.select("id", "predictedLabel", "label")
 //			.write()
 //			.option("header", "true")
 //			.csv(path);
