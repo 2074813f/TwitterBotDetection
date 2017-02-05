@@ -15,6 +15,7 @@ import org.apache.spark.ml.PipelineModel;
 import org.apache.spark.ml.PipelineStage;
 import org.apache.spark.ml.classification.RandomForestClassificationModel;
 import org.apache.spark.ml.classification.RandomForestClassifier;
+import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator;
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator;
 import org.apache.spark.ml.feature.IndexToString;
 import org.apache.spark.ml.feature.OneHotEncoder;
@@ -23,6 +24,10 @@ import org.apache.spark.ml.feature.StringIndexerModel;
 import org.apache.spark.ml.feature.VectorAssembler;
 import org.apache.spark.ml.feature.VectorIndexer;
 import org.apache.spark.ml.feature.VectorIndexerModel;
+import org.apache.spark.ml.param.ParamMap;
+import org.apache.spark.ml.tuning.CrossValidator;
+import org.apache.spark.ml.tuning.CrossValidatorModel;
+import org.apache.spark.ml.tuning.ParamGridBuilder;
 import org.apache.spark.mllib.evaluation.MulticlassMetrics;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoder;
@@ -117,7 +122,7 @@ public class ProfileClassifier {
 //		Dataset<Row> test = featureIndexer.transform(data);
 //		test.select("indexedFeatures").show(false);
 	
-		// Split the data into training and test sets (30% held out for testing)
+		// Split the data into training and test sets (40% held out for testing)
 		Dataset<Row>[] splits = data.randomSplit(new double[] {0.7, 0.3}, seed);
 		Dataset<Row> trainingData = splits[0];
 		Dataset<Row> testData = splits[1];
@@ -128,7 +133,7 @@ public class ProfileClassifier {
 		  .setLabelCol("indexedLabel")
 		  .setFeaturesCol("indexedFeatures")
 		  .setSeed(seed)
-		  .setNumTrees(60)
+		  .setNumTrees(10)
 		  .setMaxBins(300);
 	
 		// Convert indexed labels back to original labels.
@@ -140,8 +145,23 @@ public class ProfileClassifier {
 		// Chain indexers and forest in a Pipeline
 		Pipeline pipeline = new Pipeline()
 		  .setStages(new PipelineStage[] {labelIndexer, featureIndexer, rf, labelConverter});
-	
-		// Train model. This also runs the indexers.
+		
+		// Select (prediction, true label) and compute test error
+		MulticlassClassificationEvaluator evaluator = new MulticlassClassificationEvaluator()
+		  .setLabelCol("indexedLabel")
+		  .setPredictionCol("prediction")
+		  .setMetricName("accuracy");
+		
+//		ParamMap[] paramGrid = new ParamGridBuilder().build();
+//		
+//		CrossValidator cv = new CrossValidator()
+//				.setEstimator(pipeline)
+//				.setEvaluator(evaluator)
+//				.setEstimatorParamMaps(paramGrid).setNumFolds(4);
+//		
+//		CrossValidatorModel model = cv.fit(trainingData);
+		
+//		// Train model. This also runs the indexers.
 		PipelineModel model = pipeline.fit(trainingData);
 	
 		// Make predictions.
@@ -149,7 +169,7 @@ public class ProfileClassifier {
 	
 		// Select example rows to display.
 		//XXX: select rows where we incorrectly classify
-		Dataset<Row> results = predictions.select("id", "predictedLabel", "label", "mainDevice");
+//		Dataset<Row> results = predictions.select("id", "predictedLabel", "label", "mainDevice");
 		//results.show(false);
 		
 		//Write results of evaluation to disk.
@@ -159,12 +179,6 @@ public class ProfileClassifier {
 //			.write()
 //			.option("header", "true")
 //			.csv(path);
-	
-		// Select (prediction, true label) and compute test error
-		MulticlassClassificationEvaluator evaluator = new MulticlassClassificationEvaluator()
-		  .setLabelCol("indexedLabel")
-		  .setPredictionCol("prediction")
-		  .setMetricName("accuracy");
 		
 		double accuracy = evaluator.evaluate(predictions);
 		logger.debug("Test Error = {}", (1.0 - accuracy));
@@ -176,6 +190,7 @@ public class ProfileClassifier {
 		logger.debug("Confusion Matrix: \n{}", metrics.confusionMatrix().toString());
 	
 		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)(model.stages()[2]);
+//		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)model.bestModel();
 		
 		logger.debug("Feature importance: {}", rfModel.featureImportances());
 		//logger.info("Learned classification forest model: {}\n", rfModel.toDebugString());
