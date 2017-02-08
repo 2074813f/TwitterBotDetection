@@ -41,18 +41,6 @@ public class MainTest {
 		
 		List<UserProfile> users = AccountChecker.getUsers(twitter, null, labelledUsers);
 		
-		//Get hydrated statuses and associate with the users.
-		List<Status> statuses = AccountChecker.getStatuses(twitter, null, labelledUsers);
-		
-		Map<Long, UserProfile> mappedUsers = new HashMap<Long, UserProfile>();
-		users.stream().forEach(user -> mappedUsers.put(user.getUser().getId(), user));
-		
-		statuses.stream().forEach(status -> {
-			long userid = status.getUser().getId();
-			UserProfile user = mappedUsers.get(userid);
-			if (user != null) user.addStatus(status);
-		});
-		
 		//Create the spark session.
 		SparkSession spark = SparkSession
 				.builder()
@@ -74,18 +62,6 @@ public class MainTest {
 		RedisCommands<String, String> redisApi = RedisConfig.startRedis();
 		
 		List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, labelledUsers);
-		
-		//Get hydrated statuses and associate with the users.
-		List<Status> statuses = AccountChecker.getStatuses(twitter, redisApi, labelledUsers);
-		
-		Map<Long, UserProfile> mappedUsers = new HashMap<Long, UserProfile>();
-		users.stream().forEach(user -> mappedUsers.put(user.getUser().getId(), user));
-		
-		statuses.stream().forEach(status -> {
-			long userid = status.getUser().getId();
-			UserProfile user = mappedUsers.get(userid);
-			if (user != null) user.addStatus(status);
-		});
 		
 		//Create the spark session.
 		SparkSession spark = SparkSession

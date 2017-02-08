@@ -36,6 +36,7 @@ public class DataCapture {
 	 * @param filename - the file to process
 	 * @return - a list of UserProfiles based on the users found.
 	 */
+	@Deprecated
 	public static List<UserProfile> readStatusFile(String filename) {
 	
 		List<Status> tweets = new ArrayList<Status>();						//Set of statuses/tweets obtained from the file.
@@ -62,7 +63,7 @@ public class DataCapture {
 					
 					//If the user is present, add status, else add user
 					if (index != -1) {
-						users.get(index).addStatus(tweet);
+						users.get(index).addTrainingStatus(tweet);
 					}
 					else {
 						List<Status> statuses = new ArrayList<Status>();

@@ -1,20 +1,16 @@
 package features;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import models.Features;
-import models.LabelledStatus;
 import models.UserProfile;
 import twitter4j.Status;
-import twitter4j.URLEntity;
 
 public class FeatureExtractor {
 	
@@ -100,7 +96,7 @@ public class FeatureExtractor {
 	 */
 	private static void extractFromStatuses(Features features, UserProfile user) {
 		
-		int numStatuses = user.getStatuses().size();
+		int numStatuses = user.getTrainingStatuses().size();
 		
 		//If there are no statuses we cannot do work.
 		if (numStatuses == 0) {
@@ -117,7 +113,7 @@ public class FeatureExtractor {
 		int numHashTags = 0;
 		int numMentions = 0;
 		
-		for (Status status : user.getStatuses()) {
+		for (Status status : user.getTrainingStatuses()) {
 			//TODO:#Tweets with URLs / #Tweets
 			if (status.getURLEntities().length > 0) numStatusesWithURL++;
 			

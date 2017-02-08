@@ -93,8 +93,8 @@ public class StatusClassifier {
 		List<Status> human_statuses = new ArrayList<Status>();
 		List<Status> bot_statuses = new ArrayList<Status>();
 		users.forEach(user -> {
-			if (user.getLabel().compareTo("human") == 0) user.getStatuses().forEach(status -> human_statuses.add(status));
-			else user.getStatuses().forEach(status -> bot_statuses.add(status));
+			if (user.getLabel().compareTo("human") == 0) user.getTrainingStatuses().forEach(status -> human_statuses.add(status));
+			else user.getTrainingStatuses().forEach(status -> bot_statuses.add(status));
 		});
 		
 		//For each list map urls.

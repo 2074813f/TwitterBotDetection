@@ -1,13 +1,9 @@
 package tbd;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.spark.ml.classification.NaiveBayesModel;
 import org.apache.spark.ml.classification.RandomForestClassificationModel;
-import org.apache.spark.ml.classification.RandomForestClassifier;
 import org.apache.spark.sql.SparkSession;
 
 import com.lambdaworks.redis.api.sync.RedisCommands;
@@ -15,12 +11,10 @@ import com.lambdaworks.redis.api.sync.RedisCommands;
 import accountProperties.AccountChecker;
 import features.FeatureExtractor;
 import features.ProfileClassifier;
-import features.StatusClassifier;
 import models.LabelledUser;
 import models.UserProfile;
 import util.RedisConfig;
 import util.TwitterConfig;
-import twitter4j.Status;
 import twitter4j.Twitter;
 
 public class TwitterBotDetection {
@@ -60,21 +54,6 @@ public class TwitterBotDetection {
 		}
 		
 		logger.info("Breakdown: {} humans, {} bots", humans, bots);
-		
-		//Get hydrated statuses and associate with the users.
-		List<Status> statuses = AccountChecker.getStatuses(twitter, redisApi, labelledUsers);
-		logger.info("Retrieved {} statuses.", statuses.size());
-		
-		//TODO: Refactor to avoid this
-		Map<Long, UserProfile> mappedUsers = new HashMap<Long, UserProfile>();
-		users.stream().forEach(user -> mappedUsers.put(user.getUser().getId(), user));
-		
-		//For each status find matching userid and add to UserProfile
-		statuses.stream().forEach(status -> {
-			long userid = status.getUser().getId();
-			UserProfile user = mappedUsers.get(userid);
-			if (user != null) user.addStatus(status);
-		});
 		
 		//Create the spark session.
 		SparkSession spark = SparkSession

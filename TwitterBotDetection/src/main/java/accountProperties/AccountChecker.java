@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -31,10 +30,8 @@ public class AccountChecker {
 	/**
 	 * Performs a lookup on a set of users by id, to determine whether 
 	 * they are accessible, and discards the user if not. Returns a list
-	 * of fully hydrated users whose profile was accessible.
+	 * of fully hydrated users whose profiles were accessible.
 	 * 
-	 * TODO: consider renaming.
-	 * TODO: store returned user information.
 	 * TODO: check/get statuses
 	 * 
 	 * @param user
@@ -44,12 +41,56 @@ public class AccountChecker {
 	public static List<UserProfile> getUsers(Twitter twitter, 
 			RedisCommands<String, String> redisApi, List<LabelledUser> users) throws RuntimeException {
 
-		List<UserProfile> result = new ArrayList<UserProfile>();
+		//TODO: add param to fill statuses to the limit for each user, not just relying on those listed in the file.
 		
-		//Construct map for id lookup to match to results.
-		Map<Long, LabelledUser> mappedUsers = new HashMap<Long, LabelledUser>();
-		users.stream().forEach(user -> mappedUsers.put(user.getUserId(), user));
+		//Number of statuses per user to limit to, or -1 if no limit.
+		int statusLimit = 10;
 		
+		//Map userId to constructed UserProfile, reduce to list once complete.
+		Map<Long, UserProfile> result = new HashMap<Long, UserProfile>();
+		
+		//##### Deconstruct LabelledUsers #####
+		/*
+		 * The returned view of users and statuses after "lookup" requests
+		 * is a set view. Hence to associate statuses, users and labels we need
+		 * mappings.
+		 * 
+		 * Deconstruct LabelledUsers into mappings for userid -> label and
+		 * statusid -> userid to facilitate lookup.
+		 */
+		
+		//Map for userid -> label
+		Map<Long, String> mappedUsers = new HashMap<Long, String>();
+		//Map for statusid -> userid
+		Map<Long, Long> mappedStatuses = new HashMap<Long, Long>();
+		
+		//Grouped statuses for later batched iteration and retrieval.
+		List<Long> allStatuses = new ArrayList<Long>();
+		
+		//Do the mapping
+		users.stream().forEach(
+				user -> {
+					//mappedUsers i.e. {userId, label}
+					mappedUsers.put(user.getUserId(), user.getLabel());
+					
+					//Sublist user statuses to either statusLimit or take full list.
+					List<Long> limitedStatuses;
+					if (user.getStatusIds().size() > statusLimit) {
+						limitedStatuses = user.getStatusIds().subList(0, statusLimit);
+					}
+					else {
+						limitedStatuses = user.getStatusIds();
+					}
+					
+					//mappedStatuses i.e. {statusId, userId}
+					//&& allStatuses i.e. add statuses
+					limitedStatuses.forEach(status -> {
+						mappedStatuses.put(status, user.getUserId());
+						allStatuses.add(status);
+					});
+				});
+		
+		//##### Check Cache #####
 		logger.info("Checking for cached users...");
 		
 		//TODO: Consider parallel streams.
@@ -67,8 +108,8 @@ public class AccountChecker {
 						//Unmarshell User.
 						User returnedUser = TwitterObjectFactory.createUser(returned);
 						//Add user to results.
-						result.add(new UserProfile(mappedUsers.get(user.getUserId()).getLabel(), returnedUser, new ArrayList<Status>()));
-						
+						//TODO: change constructor.
+						result.put(user.getUserId(), new UserProfile(mappedUsers.get(user.getUserId()), returnedUser, new ArrayList<Status>()));
 					}
 					catch (TwitterException e) {
 						e.printStackTrace();
@@ -87,6 +128,7 @@ public class AccountChecker {
 			logger.info("Caching Disabled - No Redis Interface given.");
 		}
 		
+		//##### Non-Cached Users #####
 		//Iterate through the users not found in cache and gather from Twitter.
 		int index = 0;
 		while (index < notFound.size()) {
@@ -113,12 +155,14 @@ public class AccountChecker {
 			
 			//Add the results, setting the label from mappedUsers.
 			if (response != null) {
-				result.addAll(response.stream()
-						.map(user -> new UserProfile(mappedUsers.get(user.getId()).getLabel(), user, new ArrayList<Status>()))
-						.collect(Collectors.toList()));
+				response.stream().forEach(user ->
+					{
+						result.put(user.getId(), new UserProfile(mappedUsers.get(user.getId()), user, new ArrayList<Status>()));
+					});
 				
 				//If Redis Interface provided...
 				//XXX:Re-enable caching.
+				//TODO: move inside foreach above.
 				if (redisApi != null) {
 					for (User user : response) {
 						//Add to redis.
@@ -130,40 +174,37 @@ public class AccountChecker {
 			
 		}
 		
+		//TODO: Do not gather for cached users once userProfile caching implemented
+		//##### Get the statuses #####
+		
+		//Retrieve all the statuses from Twitter.
+		List<Status> retrievedStatuses = getStatuses(twitter, redisApi, allStatuses);
+		
+		//Add each status to UserProfile using mapping.
+		retrievedStatuses.forEach(status -> {
+			//Get the user whom the status belongs to.
+			Long userId = mappedStatuses.get(status.getId());
+			
+			//Add to the UserProfile.
+			result.get(userId).addTrainingStatus(status);
+		});
+		
 		//Return the reduced list of Users.
-		return result;
+		return new ArrayList<UserProfile>(result.values());
 	}
 
 	/**
-	 * Performs a lookup on a set of statuses by id, returning a
-	 * fully "hydrated" list of statuses.
+	 * Performs a lookup on statuses for a set of users.
+	 * 
+	 * Attempts to populate the tr
 	 * 
 	 * @param twitter
 	 * @param users
 	 * @return
 	 */
-	public static List<Status> getStatuses(Twitter twitter, RedisCommands<String, String> redisApi, List<LabelledUser> users) {
-		//TODO: add param to fill statuses to the limit for each user, not just relying on those listed in the file.
-		
-		//Number of statuses per user to limit to, or -1 if no limit.
-		int statusLimit = 10;
+	public static List<Status> getStatuses(Twitter twitter, RedisCommands<String, String> redisApi, List<Long> statuses) {
 		
 		List<Status> result = new ArrayList<Status>();
-		
-		//TODO: Add unit testing for status retrieval for e.g. x>limit, x=limit, x<limit
-		//Merge all statuses into single list.
-		List<Long> allStatusIds = new ArrayList<Long>();
-		for (LabelledUser user : users) {
-			List<Long> userStatuses = user.getStatusIds();
-			
-			//If limiting and num statuses exceeds limit, then trim.
-			if (statusLimit > 0 && userStatuses.size() >= statusLimit) {
-				allStatusIds.addAll(userStatuses.subList(0, statusLimit));
-			}
-			else {
-				allStatusIds.addAll(userStatuses);
-			}
-		}
 		
 		//Check for Statuses in cache and collect if exists.
 		//TODO:Iterate in a safe way.
@@ -174,7 +215,7 @@ public class AccountChecker {
 			logger.info("Checking for cached statuses...");
 			
 			//Check for cached statuses.
-			for (Long status : allStatusIds) {
+			for (Long status : statuses) {
 				String returned = redisApi.get("status:" + status);
 				
 				//If the key exists.
@@ -204,6 +245,9 @@ public class AccountChecker {
 		else {
 			logger.info("Caching Disabled - No Redis Interface given.");
 		}
+		
+		//Save the intermediate value of results to get number before and after twitter queries.
+		int cachedStatuses = result.size();
 		
 		//Iterate through the statuses not found in cache and gather from Twitter.
 		int index = 0;
@@ -250,6 +294,8 @@ public class AccountChecker {
 				}
 			}
 		}
+		
+		logger.info("Retrieved {} statuses.", (result.size() - cachedStatuses));
 		
 		//TODO
 		//If maxStatuses == true then we iterate through users with non-max statuses and:

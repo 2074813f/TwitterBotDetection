@@ -17,23 +17,25 @@ import twitter4j.User;
  */
 public class UserProfile {
 	
-	private String label;				//Class label (i.e. "Human", "Bot").
-	private User user;					//User profile object.
-	private Features features;			//Extracted features.
-	private List<Status> statuses;		//Statuses associated with the User.
+	private String label;						//Class label (i.e. "Human", "Bot").
+	private User user;							//User profile object.
+	private Features features;					//Extracted features.
+	private List<Status> trainingStatuses;		//Statuses associated with the User gathered from ground-truth dataset.
+	private List<Status> userTimeline;			//Sequence of recent user statuses
+	private List<Status> homeTimeline;			//Sequence of recent user statuses inc. retweets.
 	
 	public UserProfile(String label, User user, List<Status> statuses) {
 		this.label = label;
 		this.user = user;
-		this.statuses = statuses;
+		this.trainingStatuses = statuses;
 	}
 	
 	public UserProfile() {
-		this.statuses = new ArrayList<Status>();
+		this.trainingStatuses = new ArrayList<Status>();
 	}
 	
-	public void addStatus(Status status) {
-		statuses.add(status);
+	public void addTrainingStatus(Status status) {
+		trainingStatuses.add(status);
 	}
 	
 	@Override
@@ -62,11 +64,11 @@ public class UserProfile {
 	public void setUser(User user) {
 		this.user = user;
 	}
-	public List<Status> getStatuses() {
-		return statuses;
+	public List<Status> getTrainingStatuses() {
+		return trainingStatuses;
 	}
-	public void setStatuses(List<Status> statuses) {
-		this.statuses = statuses;
+	public void setTrainingStatuses(List<Status> statuses) {
+		this.trainingStatuses = statuses;
 	}
 	public String getLabel() {
 		return label;
@@ -79,5 +81,17 @@ public class UserProfile {
 	}
 	public void setFeatures(Features features) {
 		this.features = features;
+	}
+	public List<Status> getUserTimeline() {
+		return userTimeline;
+	}
+	public void setUserTimeline(List<Status> userTimeline) {
+		this.userTimeline = userTimeline;
+	}
+	public List<Status> getHomeTimeline() {
+		return homeTimeline;
+	}
+	public void setHomeTimeline(List<Status> homeTimeline) {
+		this.homeTimeline = homeTimeline;
 	}
 }
