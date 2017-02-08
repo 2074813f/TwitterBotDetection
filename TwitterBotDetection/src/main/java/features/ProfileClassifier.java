@@ -50,6 +50,8 @@ import twitter4j.User;
  *
  */
 public class ProfileClassifier {
+	//TODO: Convert features to builder pattern
+	//TODO: allow configuration of classifier e.g.CrossValidate or not.
 	
 	static Logger logger = LogManager.getLogger(TwitterBotDetection.class);
 	

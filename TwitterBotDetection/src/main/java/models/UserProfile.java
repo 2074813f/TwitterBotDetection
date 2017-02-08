@@ -28,10 +28,15 @@ public class UserProfile {
 		this.label = label;
 		this.user = user;
 		this.trainingStatuses = statuses;
+		
+		this.userTimeline = new ArrayList<Status>();
+		this.homeTimeline = new ArrayList<Status>();
 	}
 	
 	public UserProfile() {
 		this.trainingStatuses = new ArrayList<Status>();
+		this.userTimeline = new ArrayList<Status>();
+		this.homeTimeline = new ArrayList<Status>();
 	}
 	
 	public void addTrainingStatus(Status status) {

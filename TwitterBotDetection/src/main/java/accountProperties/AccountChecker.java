@@ -15,6 +15,7 @@ import com.lambdaworks.redis.api.sync.RedisCommands;
 
 import models.LabelledUser;
 import models.UserProfile;
+import twitter4j.Paging;
 import twitter4j.ResponseList;
 import twitter4j.Status;
 import twitter4j.Twitter;
@@ -189,8 +190,13 @@ public class AccountChecker {
 			result.get(userId).addTrainingStatus(status);
 		});
 		
+		//##### Get the UserTimelines #####
+		List<UserProfile> results = new ArrayList<UserProfile>(result.values());
+		
+		results.forEach(user -> lookupUserTimeline(twitter, user));
+		
 		//Return the reduced list of Users.
-		return new ArrayList<UserProfile>(result.values());
+		return results;
 	}
 
 	/**
@@ -423,7 +429,78 @@ public class AccountChecker {
 			}
 		}
 	}
-
+	
+	private static void lookupUserTimeline(Twitter twitter, UserProfile user) {
+		
+		int statusLimit = 100;
+		Paging page = new Paging(1, statusLimit);
+		
+		//If the user is protected we cannot retrieve their timeline.
+		//TODO: Revert to some other method.
+		//TODO: investigate application-only authentication parameter for Twitter instance.
+		if(user.getUser().isProtected()) {
+			logger.info("Protected Timeline for user:{}", user.getUser().getId());
+			return;
+		}
+		
+		logger.info("Retrieving UserTimeline for user:{}", user.getUser().getId());
+		
+		while (true) {
+			try {
+				ResponseList<Status> response = twitter.getUserTimeline(user.getUser().getId(), page);
+				
+				//Move to an ArrayList for consistency.
+				List<Status> results = new ArrayList<Status>();
+				results.addAll(response);
+				
+				user.setUserTimeline(results);
+				
+				return;
+			} 
+			catch (TwitterException e) {
+				//Rate limit exceeded, back off, wait, and try again.
+				if (e.getStatusCode() == 429 || e.getErrorCode() == 88){
+					logger.info("Rate limit exceeded, waiting...");
+					
+					try {
+						//Get the recommended wait time and sleep until then.
+						int retryafter = e.getRetryAfter();
+						Thread.sleep(retryafter * 1000);		//Convert from s -> ms
+					}
+					catch (InterruptedException i) {
+						logger.error("Sleeping thread interrupted for some reason ??? aborting.");
+						throw new RuntimeException();
+					}
+					
+					//Try again.
+					logger.info("Rate limit refreshed, restarting.");
+					continue;
+				}
+				//Twitter overloaded, wait and retry.
+				else if (e.getStatusCode() == 503) {
+					logger.info("Twitter overloaded, pausing execution...");
+					
+					try {
+						//Get the recommended wait time and sleep until then.
+						int delay = 3000;		//Arbitrary delay of 3s
+						Thread.sleep(delay);
+					}
+					catch (InterruptedException i) {
+						logger.error("Sleeping thread interrupted for some reason ??? aborting.");
+						throw new RuntimeException();
+					}
+					
+					//Try again.
+					logger.info("Retrying Twitter service.");
+					continue;
+				}
+				else {
+					logger.error("Error checking UserTimeline: ", e);
+					throw new RuntimeException();
+				}
+			}
+		}
+	}
 
 	/**
 	 * Cache an object into a Redis server given a Redis API

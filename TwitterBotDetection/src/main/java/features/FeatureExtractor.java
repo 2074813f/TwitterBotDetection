@@ -44,6 +44,7 @@ public class FeatureExtractor {
 			//	Account Health
 			//	Screen Name Length
 			features.setScreenNameLength(nameLength(user));
+			//TODO: protected
 			
 			//Content
 			//Network
