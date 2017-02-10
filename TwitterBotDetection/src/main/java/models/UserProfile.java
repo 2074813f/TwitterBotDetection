@@ -3,6 +3,13 @@ package models;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
+import serializer.StatusSerializer;
+import serializer.StatusesSerializer;
+import serializer.UserSerializer;
 import twitter4j.Status;
 import twitter4j.User;
 
@@ -18,25 +25,32 @@ import twitter4j.User;
 public class UserProfile {
 	
 	private String label;						//Class label (i.e. "Human", "Bot").
-	private User user;							//User profile object.
 	private Features features;					//Extracted features.
+	
+	@JsonSerialize(using = UserSerializer.class, as=User.class)
+	private User user;							//User profile object.
+	
+	@JsonSerialize(using = StatusesSerializer.class, as=List.class)
 	private List<Status> trainingStatuses;		//Statuses associated with the User gathered from ground-truth dataset.
+	@JsonSerialize(using = StatusesSerializer.class, as=List.class)
 	private List<Status> userTimeline;			//Sequence of recent user statuses
-	private List<Status> homeTimeline;			//Sequence of recent user statuses inc. retweets.
 	
 	public UserProfile(String label, User user, List<Status> statuses) {
 		this.label = label;
+		this.features = null;
 		this.user = user;
 		this.trainingStatuses = statuses;
-		
+
 		this.userTimeline = new ArrayList<Status>();
-		this.homeTimeline = new ArrayList<Status>();
 	}
 	
 	public UserProfile() {
+		this.label = null;
+		this.features = null;
+		this.user = null;
+		
 		this.trainingStatuses = new ArrayList<Status>();
 		this.userTimeline = new ArrayList<Status>();
-		this.homeTimeline = new ArrayList<Status>();
 	}
 	
 	public void addTrainingStatus(Status status) {
@@ -92,11 +106,5 @@ public class UserProfile {
 	}
 	public void setUserTimeline(List<Status> userTimeline) {
 		this.userTimeline = userTimeline;
-	}
-	public List<Status> getHomeTimeline() {
-		return homeTimeline;
-	}
-	public void setHomeTimeline(List<Status> homeTimeline) {
-		this.homeTimeline = homeTimeline;
 	}
 }

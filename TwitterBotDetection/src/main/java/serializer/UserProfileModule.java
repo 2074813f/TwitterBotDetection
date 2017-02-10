@@ -1,5 +1,8 @@
 package serializer;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.fasterxml.jackson.databind.module.SimpleModule;
 
 import models.UserProfile;
