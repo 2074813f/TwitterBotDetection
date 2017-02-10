@@ -35,7 +35,8 @@ public class RedisTest {
 	private StatefulRedisConnection<String, String> connection;
 	private RedisCommands<String, String> syncCommands;
 
-    private ObjectMapper mapper = new ObjectMapper();
+	private Twitter twitter = TwitterConfig.authTwitter();
+    private UserProfileObjectMapper mapper = new UserProfileObjectMapper();
 
 	@Before
 	public void setUp() {
@@ -62,95 +63,46 @@ public class RedisTest {
 		
 		syncCommands.flushall();
 	}
-
+    
     @Test
     public void setGetTwitterUser() throws JsonProcessingException, TwitterException {
-        Twitter twitter = TwitterConfig.authTwitter();
-
-        //Get the Twitter user.
-        User user = twitter.showUser(userId);
-        String key = "user:"+user.getId();
-
-        String marshalledUser = mapper.writeValueAsString(user);
-
-        //Persist, retrieve, compare.
-        syncCommands.set(key, marshalledUser);
-        String returned = syncCommands.get("user:"+user.getId());
-        User returnedUser = TwitterObjectFactory.createUser(returned);
-
-        assertTrue(user.compareTo(returnedUser) == 0);
-        
-        assertTrue(syncCommands.del(key) == 1);
-    }
-    
-    @Test
-    public void setGetTwitterStatus() throws JsonProcessingException, TwitterException {
-    	Twitter twitter = TwitterConfig.authTwitter();
-    	
-    	//Get the Twitter status.
-    	Status status = twitter.showStatus(statusId);
-    	String key = "status:"+status.getId();
-    	
-    	String marshalledStatus = mapper.writeValueAsString(status);
-    	
-    	//Persist, retrieve, compare.
-    	syncCommands.set(key, marshalledStatus);
-    	String returned = syncCommands.get("status:"+status.getId());
-    	Status returnedStatus = TwitterObjectFactory.createStatus(returned);
-    	
-    	assertTrue(status.compareTo(returnedStatus) == 0);
-    	
-    	assertTrue(syncCommands.del(key) == 1);
-    }
-    
-    @Test
-    public void setGetTwitterUserCustom() throws JsonProcessingException, TwitterException {
-    	Twitter twitter = TwitterConfig.authTwitter();
-    	UserProfileObjectMapper newmapper = new UserProfileObjectMapper();
     	
     	//Get the Twitter user.
         User user = twitter.showUser(userId);
         String key = "user:"+user.getId();
-        String testUser = TwitterObjectFactory.getRawJSON(user);
         
-        //Do the marshalling with the custom mapper.
-        String marshalledUser = newmapper.writeValueAsString(user);
+        //Marshall the user.
+        String marshalledUser = mapper.writeValueAsString(user);
 
-        //Persist, retrieve, compare.
+        //Persist, retrieve, Unmarshall.
         syncCommands.set(key, marshalledUser);
         String returned = syncCommands.get("user:"+user.getId());
         User returnedUser = TwitterObjectFactory.createUser(returned);
 
         //Compare the user objects themselves.
         assertTrue(user.compareTo(returnedUser) == 0);
-        //Compare the Strings (due to paranoia).
-        assertTrue(returned.equals(testUser));
         
         assertTrue(syncCommands.del(key) == 1);
     }
     
     @Test
-    public void setGetTwitterStatusCustom() throws TwitterException, JsonProcessingException {
-    	Twitter twitter = TwitterConfig.authTwitter();
-    	UserProfileObjectMapper newmapper = new UserProfileObjectMapper();
+    public void setGetTwitterStatus() throws TwitterException, JsonProcessingException {
     	
     	//Get the Twitter user.
     	Status status = twitter.showStatus(statusId);
         String key = "status:"+status.getId();
-        String testStatus = TwitterObjectFactory.getRawJSON(status);
         
-        //Do the marshalling with the custom mapper.
-        String marshalledUser = newmapper.writeValueAsString(status);
+        
+        //Marshall the status.
+        String marshalledStatus = mapper.writeValueAsString(status);
 
         //Persist, retrieve, compare.
-        syncCommands.set(key, marshalledUser);
+        syncCommands.set(key, marshalledStatus);
         String returned = syncCommands.get("status:"+status.getId());
         Status returnedStatus = TwitterObjectFactory.createStatus(returned);
 
         //Compare the user objects themselves.
         assertTrue(status.compareTo(returnedStatus) == 0);
-        //Compare the Strings (due to paranoia).
-        assertTrue(returned.equals(testStatus));
         
         assertTrue(syncCommands.del(key) == 1);
     }
