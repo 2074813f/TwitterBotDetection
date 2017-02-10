@@ -11,10 +11,12 @@ import org.apache.logging.log4j.Logger;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.lambdaworks.redis.api.sync.RedisCommands;
 
 import models.LabelledUser;
 import models.UserProfile;
+import serializer.UserProfileObjectMapper;
 import twitter4j.Paging;
 import twitter4j.ResponseList;
 import twitter4j.Status;
@@ -27,6 +29,7 @@ public class AccountChecker {
 	
 	static Logger logger = LogManager.getLogger();
 	static ObjectMapper mapper = new ObjectMapper();
+	static UserProfileObjectMapper newmapper = new UserProfileObjectMapper();
 	
 	/**
 	 * Performs a lookup on a set of users by id, to determine whether 
@@ -168,7 +171,12 @@ public class AccountChecker {
 					for (User user : response) {
 						//Add to redis.
 						//TODO: Exception on existence of key, should not be in store since earlier check.
-						cacheObject(redisApi, user);
+						try {
+							cacheObject(redisApi, user);
+						} catch (JsonProcessingException e) {
+							logger.error("Failed to cache User object.");
+							e.printStackTrace();
+						}
 					}
 				}
 			}
@@ -292,7 +300,12 @@ public class AccountChecker {
 				for(Long statusId : statusIds) {
 					Status status = mappedResponse.get(statusId);
 					if (status != null) {
-						cacheObject(redisApi, status);
+						try {
+							cacheObject(redisApi, status);
+						} catch (JsonProcessingException e) {
+							logger.error("Failed to cache Status object.");
+							e.printStackTrace();
+						}
 					}
 					else {
 						cacheNullRef(redisApi, "status:"+statusId);
@@ -510,11 +523,11 @@ public class AccountChecker {
 	 * @param o
 	 * @throws JsonProcessingException
 	 */
-	private static void cacheObject(RedisCommands<String, String> redisApi, Object o) {
+	private static void cacheObject(RedisCommands<String, String> redisApi, Object o) throws JsonProcessingException {
 		//If object is a User...
 		if (o instanceof User) {
 			User user = (User) o;
-			String marshalledUser = TwitterObjectFactory.getRawJSON(user);
+			String marshalledUser = newmapper.writeValueAsString(user);
 			redisApi.set("user:"+user.getId(), marshalledUser);
 		}
 		//If object is a status...
@@ -522,6 +535,9 @@ public class AccountChecker {
 			Status status = (Status) o;
 			String marshalledStatus = TwitterObjectFactory.getRawJSON(status);
 			redisApi.set("status:"+status.getId(), marshalledStatus);
+		}
+		else if (o instanceof UserProfile){
+			UserProfile user = (UserProfile) o;
 		}
 		//Else don't know how to store.
 		else {

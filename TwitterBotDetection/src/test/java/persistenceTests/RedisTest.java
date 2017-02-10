@@ -10,6 +10,8 @@ import com.lambdaworks.redis.RedisClient;
 import com.lambdaworks.redis.api.StatefulRedisConnection;
 import com.lambdaworks.redis.api.sync.RedisCommands;
 
+import serializer.UserProfileObjectMapper;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
@@ -33,7 +35,7 @@ public class RedisTest {
 	private StatefulRedisConnection<String, String> connection;
 	private RedisCommands<String, String> syncCommands;
 
-        private ObjectMapper mapper = new ObjectMapper();
+    private ObjectMapper mapper = new ObjectMapper();
 
 	@Before
 	public void setUp() {
@@ -99,5 +101,31 @@ public class RedisTest {
     	assertTrue(status.compareTo(returnedStatus) == 0);
     	
     	assertTrue(syncCommands.del(key) == 1);
+    }
+    
+    @Test
+    public void setGetTwitterUserCustom() throws JsonProcessingException, TwitterException {
+    	Twitter twitter = TwitterConfig.authTwitter();
+    	UserProfileObjectMapper newmapper = new UserProfileObjectMapper();
+    	
+    	//Get the Twitter user.
+        User user = twitter.showUser(userId);
+        String key = "user:"+user.getId();
+        String testUser = TwitterObjectFactory.getRawJSON(user);
+        
+        //Do the marshalling with the custom mapper.
+        String marshalledUser = newmapper.writeValueAsString(user);
+
+        //Persist, retrieve, compare.
+        syncCommands.set(key, marshalledUser);
+        String returned = syncCommands.get("user:"+user.getId());
+        User returnedUser = TwitterObjectFactory.createUser(returned);
+
+        //Compare the user objects themselves.
+        assertTrue(user.compareTo(returnedUser) == 0);
+        //Compare the Strings (due to paranoia).
+        assertTrue(returned.equals(testUser));
+        
+        assertTrue(syncCommands.del(key) == 1);
     }
 }
