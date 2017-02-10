@@ -128,4 +128,30 @@ public class RedisTest {
         
         assertTrue(syncCommands.del(key) == 1);
     }
+    
+    @Test
+    public void setGetTwitterStatusCustom() throws TwitterException, JsonProcessingException {
+    	Twitter twitter = TwitterConfig.authTwitter();
+    	UserProfileObjectMapper newmapper = new UserProfileObjectMapper();
+    	
+    	//Get the Twitter user.
+    	Status status = twitter.showStatus(statusId);
+        String key = "status:"+status.getId();
+        String testStatus = TwitterObjectFactory.getRawJSON(status);
+        
+        //Do the marshalling with the custom mapper.
+        String marshalledUser = newmapper.writeValueAsString(status);
+
+        //Persist, retrieve, compare.
+        syncCommands.set(key, marshalledUser);
+        String returned = syncCommands.get("status:"+status.getId());
+        Status returnedStatus = TwitterObjectFactory.createStatus(returned);
+
+        //Compare the user objects themselves.
+        assertTrue(status.compareTo(returnedStatus) == 0);
+        //Compare the Strings (due to paranoia).
+        assertTrue(returned.equals(testStatus));
+        
+        assertTrue(syncCommands.del(key) == 1);
+    }
 }

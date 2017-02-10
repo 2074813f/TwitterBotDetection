@@ -11,7 +11,6 @@ import org.apache.logging.log4j.Logger;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.lambdaworks.redis.api.sync.RedisCommands;
 
 import models.LabelledUser;
@@ -28,8 +27,7 @@ import twitter4j.User;
 public class AccountChecker {
 	
 	static Logger logger = LogManager.getLogger();
-	static ObjectMapper mapper = new ObjectMapper();
-	static UserProfileObjectMapper newmapper = new UserProfileObjectMapper();
+	static UserProfileObjectMapper mapper = new UserProfileObjectMapper();
 	
 	/**
 	 * Performs a lookup on a set of users by id, to determine whether 
@@ -527,13 +525,13 @@ public class AccountChecker {
 		//If object is a User...
 		if (o instanceof User) {
 			User user = (User) o;
-			String marshalledUser = newmapper.writeValueAsString(user);
+			String marshalledUser = mapper.writeValueAsString(user);
 			redisApi.set("user:"+user.getId(), marshalledUser);
 		}
 		//If object is a status...
 		else if (o instanceof Status) {
 			Status status = (Status) o;
-			String marshalledStatus = TwitterObjectFactory.getRawJSON(status);
+			String marshalledStatus = mapper.writeValueAsString(status);
 			redisApi.set("status:"+status.getId(), marshalledStatus);
 		}
 		else if (o instanceof UserProfile){
