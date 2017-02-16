@@ -31,15 +31,16 @@ public class AccountChecker {
 	static UserProfileObjectMapper mapper = new UserProfileObjectMapper();
 	
 	/**
-	 * Performs a lookup on a set of users by id, to determine whether 
-	 * they are accessible, and discards the user if not. Returns a list
-	 * of fully hydrated users whose profiles were accessible.
+	 * Retrieves a list of UserProfiles corresponding to accessible Twitter
+	 * Users from labeled training data userids.
 	 * 
-	 * TODO: check/get statuses
+	 * If a Redis Interface is provided, utilizes caching of UserProfiles.
 	 * 
-	 * @param user
-	 * @return - the List of UserProfiles with inaccessible profiles removed.
-	 * @throws TwitterException 
+	 * @param twitter - interface to the Twitter API
+	 * @param redisApi - the interface to a redis instance.
+	 * @param users - a collection of userids with a corresponding classification label.
+	 * @return - the List of accessible UserProfiles.
+	 * @throws RuntimeException 
 	 */
 	public static List<UserProfile> getUsers(Twitter twitter, 
 			RedisCommands<String, String> redisApi, List<LabelledUser> users) throws RuntimeException {
