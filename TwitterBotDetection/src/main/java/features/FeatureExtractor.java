@@ -97,7 +97,7 @@ public class FeatureExtractor {
 	 */
 	private static void extractFromStatuses(Features features, UserProfile user) {
 		
-		int numStatuses = user.getTrainingStatuses().size();
+		int numStatuses = user.getUserTimeline().size();
 		
 		//If there are no statuses we cannot do work.
 		if (numStatuses == 0) {
@@ -114,7 +114,7 @@ public class FeatureExtractor {
 		int numHashTags = 0;
 		int numMentions = 0;
 		
-		for (Status status : user.getTrainingStatuses()) {
+		for (Status status : user.getUserTimeline()) {
 			//TODO:#Tweets with URLs / #Tweets
 			if (status.getURLEntities().length > 0) numStatusesWithURL++;
 			

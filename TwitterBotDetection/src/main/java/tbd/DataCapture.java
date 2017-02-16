@@ -68,7 +68,15 @@ public class DataCapture {
 					else {
 						List<Status> statuses = new ArrayList<Status>();
 						statuses.add(tweet);
-						users.add(new UserProfile(null, newUser, statuses));
+						
+						List<String> marshalledStatuses = new ArrayList<String>();
+						statuses.forEach(status -> {
+							marshalledStatuses.add(TwitterObjectFactory.getRawJSON(status));
+						});
+						
+						UserProfile newProfile = new UserProfile();
+						newProfile.setUser(newUser, TwitterObjectFactory.getRawJSON(newUser));
+						newProfile.setTrainingStatuses(statuses, marshalledStatuses);
 					}
 				}
 				

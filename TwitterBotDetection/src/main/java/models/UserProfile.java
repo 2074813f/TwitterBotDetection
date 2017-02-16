@@ -11,6 +11,7 @@ import serializer.StatusSerializer;
 import serializer.StatusesSerializer;
 import serializer.UserSerializer;
 import twitter4j.Status;
+import twitter4j.TwitterObjectFactory;
 import twitter4j.User;
 
 /**
@@ -26,23 +27,19 @@ public class UserProfile {
 	
 	private String label;						//Class label (i.e. "Human", "Bot").
 	private Features features;					//Extracted features.
-	
-	@JsonSerialize(using = UserSerializer.class, as=User.class)
+
 	private User user;							//User profile object.
 	
-	@JsonSerialize(using = StatusesSerializer.class, as=List.class)
 	private List<Status> trainingStatuses;		//Statuses associated with the User gathered from ground-truth dataset.
-	@JsonSerialize(using = StatusesSerializer.class, as=List.class)
 	private List<Status> userTimeline;			//Sequence of recent user statuses
 	
-	public UserProfile(String label, User user, List<Status> statuses) {
-		this.label = label;
-		this.features = null;
-		this.user = user;
-		this.trainingStatuses = statuses;
-
-		this.userTimeline = new ArrayList<Status>();
-	}
+	/*
+	 * Twitter4J discards raw json if a different interface method is used,
+	 * hence we must store the raw json for later caching.
+	 */
+	private String marshalledUser;
+	private List<String> marshalledTrainingStatuses;
+	private List<String> marshalledUserTimeLine;
 	
 	public UserProfile() {
 		this.label = null;
@@ -80,14 +77,16 @@ public class UserProfile {
 	public User getUser() {
 		return user;
 	}
-	public void setUser(User user) {
+	public void setUser(User user, String marshalledUser) {
 		this.user = user;
+		this.marshalledUser = marshalledUser;
 	}
 	public List<Status> getTrainingStatuses() {
 		return trainingStatuses;
 	}
-	public void setTrainingStatuses(List<Status> statuses) {
+	public void setTrainingStatuses(List<Status> statuses, List<String> marshalledStatuses) {
 		this.trainingStatuses = statuses;
+		this.marshalledTrainingStatuses = marshalledStatuses;
 	}
 	public String getLabel() {
 		return label;
@@ -104,7 +103,32 @@ public class UserProfile {
 	public List<Status> getUserTimeline() {
 		return userTimeline;
 	}
-	public void setUserTimeline(List<Status> userTimeline) {
+	public void setUserTimeline(List<Status> userTimeline, List<String> marshalledUserTimeline) {
 		this.userTimeline = userTimeline;
+		this.marshalledUserTimeLine = marshalledUserTimeline;
 	}
+
+	public String getMarshalledUser() {
+		return marshalledUser;
+	}
+	public List<String> getMarshalledTrainingStatuses() {
+		return marshalledTrainingStatuses;
+	}
+	public List<String> getMarshalledUserTimeLine() {
+		return marshalledUserTimeLine;
+	}
+
+	public void setMarshalledUser(String marshalledUser) {
+		this.marshalledUser = marshalledUser;
+	}
+
+	public void setMarshalledTrainingStatuses(List<String> marshalledTrainingStatuses) {
+		this.marshalledTrainingStatuses = marshalledTrainingStatuses;
+	}
+
+	public void setMarshalledUserTimeLine(List<String> marshalledUserTimeLine) {
+		this.marshalledUserTimeLine = marshalledUserTimeLine;
+	}
+	
+	
 }

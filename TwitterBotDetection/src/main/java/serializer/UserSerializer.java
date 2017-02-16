@@ -15,7 +15,7 @@ public class UserSerializer extends JsonSerializer<User>{
 	@Override
 	public void serialize(User value, JsonGenerator gen, SerializerProvider provider) throws IOException {
 		String marshalledUser = TwitterObjectFactory.getRawJSON(value);
-		
+
 		gen.writeRaw(marshalledUser);
 	}
 

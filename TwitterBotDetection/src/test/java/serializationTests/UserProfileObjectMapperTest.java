@@ -2,6 +2,7 @@ package serializationTests;
 
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -59,25 +60,45 @@ public class UserProfileObjectMapperTest {
     }
     
     @Test
-    public void serializeUserProfile() throws TwitterException, JsonProcessingException {
+    public void serializeUserProfile() throws TwitterException, IOException {
+    	//Construct the UserProfile
+    	UserProfile profile = new UserProfile();
+    	profile.setLabel("human");
+    	
     	//Get the Twitter user.
         User user = twitter.showUser(userId);
+        String marshalledUser = TwitterObjectFactory.getRawJSON(user);
+        profile.setUser(user, marshalledUser);
+        
         //Get the Twitter status.
-    	Status status = twitter.showStatus(statusId);
+    	Status status = twitter.showStatus(statusId);	
     	List<Status> statuses = new ArrayList<Status>();
     	statuses.add(status);
+    	List<String> marshalledStatuses = new ArrayList<String>();
+    	statuses.forEach(s -> marshalledStatuses.add(TwitterObjectFactory.getRawJSON(s)));
+    	profile.setTrainingStatuses(statuses, marshalledStatuses);
+    	
     	//Get the Twitter user timeline
     	Paging page = new Paging(1, 1);
     	ResponseList<Status> response = twitter.getUserTimeline(user.getId(), page);
     	List<Status> timeline = new ArrayList<Status>();
     	//timeline.addAll(response);
     	response.forEach(returnedstatus -> timeline.add(returnedstatus));
-    	
-    	//Construct the UserProfile
-    	UserProfile profile = new UserProfile("human", user, statuses);
-    	profile.setUserTimeline(timeline);
+    	List<String> marshalledUserTimeline = new ArrayList<String>();
+    	timeline.forEach(u -> marshalledUserTimeline.add(TwitterObjectFactory.getRawJSON(u)));
+    	profile.setUserTimeline(timeline, marshalledUserTimeline);
     	
     	String marshalledUserProfile = mapper.writeValueAsString(profile);
+    	UserProfile result = mapper.readValue(marshalledUserProfile, UserProfile.class);
+    	
+    	//Compare the original profile with deserialized.
+    	assertTrue(profile.getMarshalledUser().compareTo(result.getMarshalledUser()) == 0);
+    	assertTrue(profile.getMarshalledTrainingStatuses().equals(result.getMarshalledTrainingStatuses()));
+    	assertTrue(profile.getMarshalledUserTimeLine().equals(result.getMarshalledUserTimeLine()));
+    	
+    	assertTrue(profile.getUser().equals(result.getUser()));
+    	assertTrue(profile.getTrainingStatuses().equals(result.getTrainingStatuses()));
+    	assertTrue(profile.getUserTimeline().equals(result.getUserTimeline()));
     }
 
 }

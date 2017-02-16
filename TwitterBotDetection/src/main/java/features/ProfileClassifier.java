@@ -70,7 +70,7 @@ public class ProfileClassifier {
 		long seed = 207335481L;
 		logger.info("Training with seed: {}", seed);
 		
-		String[] rawFeatures = new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "indexedMainDevice"};
+		String[] rawFeatures = new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceVec"};
 		
 		/*
 		 * Convert UserFeatures objects to Dataset<Row>, transforming features to
@@ -82,7 +82,7 @@ public class ProfileClassifier {
 		//Show the non-truncated devices for debugging.
 		//rawData.select("mainDevice").show(20, false);
 		
-		//TODO: Should drop elements where we have no statuses before train..() called.
+		//TODO: Should drop elements where we have no statuses before train..() called?
 		//rawData = rawData.filter(rawData.col("urlRatio").gt(0));
 		
 		// Index the mainDevice column.
@@ -93,10 +93,10 @@ public class ProfileClassifier {
 		Dataset<Row> indexedData = sourceIndexer.transform(rawData);
 		
 		//Convert label indices -> vectors to reduce bins
-//		OneHotEncoder encoder = new OneHotEncoder()
-//				.setInputCol("indexedMainDevice")
-//				.setOutputCol("mainDeviceVec");
-//		indexedData = encoder.transform(indexedData);
+		OneHotEncoder encoder = new OneHotEncoder()
+				.setInputCol("indexedMainDevice")
+				.setOutputCol("mainDeviceVec");
+		indexedData = encoder.transform(indexedData);
 		
 		// Assemble the features into a vector for classification.
 		VectorAssembler assembler = new VectorAssembler()
@@ -136,7 +136,7 @@ public class ProfileClassifier {
 		  .setFeaturesCol("indexedFeatures")
 		  .setSeed(seed)
 		  .setNumTrees(10)
-		  .setMaxBins(300);
+		  .setMaxBins(30);
 	
 		// Convert indexed labels back to original labels.
 		IndexToString labelConverter = new IndexToString()
@@ -154,17 +154,17 @@ public class ProfileClassifier {
 		  .setPredictionCol("prediction")
 		  .setMetricName("accuracy");
 		
-//		ParamMap[] paramGrid = new ParamGridBuilder().build();
-//		
-//		CrossValidator cv = new CrossValidator()
-//				.setEstimator(pipeline)
-//				.setEvaluator(evaluator)
-//				.setEstimatorParamMaps(paramGrid).setNumFolds(4);
-//		
-//		CrossValidatorModel model = cv.fit(trainingData);
+		ParamMap[] paramGrid = new ParamGridBuilder().build();
+		
+		CrossValidator cv = new CrossValidator()
+				.setEstimator(pipeline)
+				.setEvaluator(evaluator)
+				.setEstimatorParamMaps(paramGrid).setNumFolds(4);
+		
+		CrossValidatorModel model = cv.fit(trainingData);
 		
 //		// Train model. This also runs the indexers.
-		PipelineModel model = pipeline.fit(trainingData);
+//		PipelineModel model = pipeline.fit(trainingData);
 	
 		// Make predictions.
 		Dataset<Row> predictions = model.transform(testData);
@@ -172,7 +172,7 @@ public class ProfileClassifier {
 		// Select example rows to display.
 		//XXX: select rows where we incorrectly classify
 //		Dataset<Row> results = predictions.select("id", "predictedLabel", "label", "mainDevice");
-		//results.show(false);
+//		//results.show(false);
 		
 		//Write results of evaluation to disk.
 //		Long datetime = new Date().getTime();
@@ -191,8 +191,8 @@ public class ProfileClassifier {
 		logger.debug("Accuracy: {}", metrics.accuracy());
 		logger.debug("Confusion Matrix: \n{}", metrics.confusionMatrix().toString());
 	
-		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)(model.stages()[2]);
-//		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)model.bestModel();
+//		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)(model.stages()[2]);
+		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)model.bestModel();
 		
 		logger.debug("Feature importance: {}", rfModel.featureImportances());
 		//logger.info("Learned classification forest model: {}\n", rfModel.toDebugString());

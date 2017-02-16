@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import twitter4j.Status;
 import twitter4j.TwitterObjectFactory;
 
+@Deprecated
 public class StatusesSerializer extends JsonSerializer<List<Status>> {
 
 	@Override

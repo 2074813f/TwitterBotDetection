@@ -15,5 +15,8 @@ public class UserProfileModule extends SimpleModule {
 		super();
 		addSerializer(User.class, new UserSerializer());
 		addSerializer(Status.class, new StatusSerializer());
+		addSerializer(UserProfile.class, new UserProfileSerializer());
+		
+		addDeserializer(UserProfile.class, new UserProfileDeserializer());
 	}
 }

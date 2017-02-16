@@ -110,8 +110,11 @@ public class AccountChecker {
 						//Unmarshell User.
 						User returnedUser = TwitterObjectFactory.createUser(returned);
 						//Add user to results.
-						//TODO: change constructor.
-						result.put(user.getUserId(), new UserProfile(mappedUsers.get(user.getUserId()), returnedUser, new ArrayList<Status>()));
+						UserProfile newProfile = new UserProfile();
+						newProfile.setLabel(user.getLabel());
+						newProfile.setUser(returnedUser, TwitterObjectFactory.getRawJSON(returnedUser));
+						
+						result.put(user.getUserId(), newProfile);
 					}
 					catch (TwitterException e) {
 						e.printStackTrace();
@@ -159,7 +162,12 @@ public class AccountChecker {
 			if (response != null) {
 				response.stream().forEach(user ->
 					{
-						result.put(user.getId(), new UserProfile(mappedUsers.get(user.getId()), user, new ArrayList<Status>()));
+						//Add user to results.
+						UserProfile newProfile = new UserProfile();
+						newProfile.setLabel(mappedUsers.get(user.getId()));
+						newProfile.setUser(user, TwitterObjectFactory.getRawJSON(user));
+						
+						result.put(user.getId(), newProfile);
 					});
 				
 				//If Redis Interface provided...
@@ -200,6 +208,21 @@ public class AccountChecker {
 		List<UserProfile> results = new ArrayList<UserProfile>(result.values());
 		
 		results.forEach(user -> lookupUserTimeline(twitter, user));
+		
+		//If Redis Interface provided...
+		//TODO: move inside foreach above.
+		if (redisApi != null) {
+			for (UserProfile userprofile : results) {
+				//Add to redis.
+				//TODO: Exception on existence of key, should not be in store since earlier check.
+				try {
+					cacheObject(redisApi, userprofile);
+				} catch (JsonProcessingException e) {
+					logger.error("Failed to cache UserProfile object.");
+					e.printStackTrace();
+				}
+			}
+		}
 		
 		//Return the reduced list of Users.
 		return results;
@@ -464,7 +487,12 @@ public class AccountChecker {
 				List<Status> results = new ArrayList<Status>();
 				results.addAll(response);
 				
-				user.setUserTimeline(results);
+				List<String> marshalledResults = new ArrayList<String>();
+				results.forEach(result -> {
+					marshalledResults.add(TwitterObjectFactory.getRawJSON(result));
+				});
+				
+				user.setUserTimeline(results, marshalledResults);
 				
 				return;
 			} 
@@ -536,6 +564,8 @@ public class AccountChecker {
 		}
 		else if (o instanceof UserProfile){
 			UserProfile user = (UserProfile) o;
+			String marshalledUserProfile = mapper.writeValueAsString(user);
+			redisApi.set("userprofile", marshalledUserProfile);
 		}
 		//Else don't know how to store.
 		else {
