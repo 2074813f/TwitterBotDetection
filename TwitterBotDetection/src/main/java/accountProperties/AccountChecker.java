@@ -1,5 +1,6 @@
 package accountProperties;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -51,6 +52,42 @@ public class AccountChecker {
 		//Map userId to constructed UserProfile, reduce to list once complete.
 		Map<Long, UserProfile> result = new HashMap<Long, UserProfile>();
 		
+		//##### Check Cache #####
+		logger.info("Checking for cached UserProfiles...");
+		
+		//TODO: Consider parallel streams.
+		//Check for Users in cache and collect if exists.
+		//TODO:Iterate in a safe way.
+		List<LabelledUser> notFound = new ArrayList<LabelledUser>();
+		
+		//If Redis Interface provided...
+		if (redisApi != null) {
+			//Check for cached users.
+			for (LabelledUser user : users) {
+				String returned = redisApi.get("userprofile:" + user.getUserId());
+				if (returned != null && returned != "null") {
+					try {
+						//Unmarshell UserProfile.
+						UserProfile returnedUser = mapper.readValue(returned, UserProfile.class);
+						
+						result.put(user.getUserId(), returnedUser);
+					}
+					catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+				else {
+					//Requires Twitter API request.
+					notFound.add(user);
+				}
+			}
+			
+			logger.info("Found {} cached UserProfiles.", result.size());
+		}
+		else {
+			logger.info("Caching Disabled - No Redis Interface given.");
+		}
+		
 		//##### Deconstruct LabelledUsers #####
 		/*
 		 * The returned view of users and statuses after "lookup" requests
@@ -68,6 +105,9 @@ public class AccountChecker {
 		
 		//Grouped statuses for later batched iteration and retrieval.
 		List<Long> allStatuses = new ArrayList<Long>();
+		
+		//First removed found cached users.
+		users = users.stream().filter(u -> !result.containsKey(u.getUserId())).collect(Collectors.toList());
 		
 		//Do the mapping
 		users.stream().forEach(
@@ -92,49 +132,10 @@ public class AccountChecker {
 					});
 				});
 		
-		//##### Check Cache #####
-		logger.info("Checking for cached users...");
-		
-		//TODO: Consider parallel streams.
-		//Check for Users in cache and collect if exists.
-		//TODO:Iterate in a safe way.
-		List<LabelledUser> notFound = new ArrayList<LabelledUser>();
-		
-		//If Redis Interface provided...
-		if (redisApi != null) {
-			//Check for cached users.
-			for (LabelledUser user : users) {
-				String returned = redisApi.get("user:" + user.getUserId());
-				if (returned != null && returned != "null") {
-					try {
-						//Unmarshell User.
-						User returnedUser = TwitterObjectFactory.createUser(returned);
-						//Add user to results.
-						UserProfile newProfile = new UserProfile();
-						newProfile.setLabel(user.getLabel());
-						newProfile.setUser(returnedUser, TwitterObjectFactory.getRawJSON(returnedUser));
-						
-						result.put(user.getUserId(), newProfile);
-					}
-					catch (TwitterException e) {
-						e.printStackTrace();
-						//throw new RuntimeException("Failed to unmarshall User from Redis.");
-					}
-				}
-				else {
-					//Requires Twitter API request.
-					notFound.add(user);
-				}
-			}
-			
-			logger.info("Found {} cached users.", result.size());
-		}
-		else {
-			logger.info("Caching Disabled - No Redis Interface given.");
-		}
-		
 		//##### Non-Cached Users #####
 		//Iterate through the users not found in cache and gather from Twitter.
+		Map<Long, UserProfile> newResult = new HashMap<Long, UserProfile>();
+		
 		int index = 0;
 		while (index < notFound.size()) {
 			List<LabelledUser> toBeProcessed;	//View of sublist of <=100 users
@@ -167,24 +168,8 @@ public class AccountChecker {
 						newProfile.setLabel(mappedUsers.get(user.getId()));
 						newProfile.setUser(user, TwitterObjectFactory.getRawJSON(user));
 						
-						result.put(user.getId(), newProfile);
+						newResult.put(user.getId(), newProfile);
 					});
-				
-				//If Redis Interface provided...
-				//XXX:Re-enable caching.
-				//TODO: move inside foreach above.
-				if (redisApi != null) {
-					for (User user : response) {
-						//Add to redis.
-						//TODO: Exception on existence of key, should not be in store since earlier check.
-						try {
-							cacheObject(redisApi, user);
-						} catch (JsonProcessingException e) {
-							logger.error("Failed to cache User object.");
-							e.printStackTrace();
-						}
-					}
-				}
 			}
 			
 		}
@@ -201,18 +186,22 @@ public class AccountChecker {
 			Long userId = mappedStatuses.get(status.getId());
 			
 			//Add to the UserProfile.
-			result.get(userId).addTrainingStatus(status);
+			newResult.get(userId).addTrainingStatus(status);
 		});
 		
+		//TODO: Do not gather for cached users once userProfile caching implemented.
 		//##### Get the UserTimelines #####
-		List<UserProfile> results = new ArrayList<UserProfile>(result.values());
 		
-		results.forEach(user -> lookupUserTimeline(twitter, user));
+		//Only do the lookup for users we did not find during caching.
+		//Reduce the mapped userid:users to a list.
+		List<UserProfile> newResults = new ArrayList<UserProfile>(newResult.values());
+		newResults.forEach(user -> lookupUserTimeline(twitter, user));
 		
+		//##### Cache the new UserProfiles #####
 		//If Redis Interface provided...
 		//TODO: move inside foreach above.
 		if (redisApi != null) {
-			for (UserProfile userprofile : results) {
+			for (UserProfile userprofile : newResults) {
 				//Add to redis.
 				//TODO: Exception on existence of key, should not be in store since earlier check.
 				try {
@@ -223,6 +212,12 @@ public class AccountChecker {
 				}
 			}
 		}
+		
+		//Reduce the cached mapped userid:users to a list.
+		List<UserProfile> results = new ArrayList<UserProfile>(result.values());
+		
+		//Combine cached and new results.
+		results.addAll(newResults);
 		
 		//Return the reduced list of Users.
 		return results;
@@ -241,62 +236,22 @@ public class AccountChecker {
 		
 		List<Status> result = new ArrayList<Status>();
 		
-		//Check for Statuses in cache and collect if exists.
-		//TODO:Iterate in a safe way.
-		List<Long> notFound = new ArrayList<Long>();
-		
-		//If Redis Interface provided...
-		if (redisApi != null) {
-			logger.info("Checking for cached statuses...");
-			
-			//Check for cached statuses.
-			for (Long status : statuses) {
-				String returned = redisApi.get("status:" + status);
-				
-				//If the key exists.
-				if (returned != null) {
-					if (returned.compareTo("null") != 0) {
-					try {
-						//Unmarshell Status.
-						Status returnedStatus = TwitterObjectFactory.createStatus(returned);
-						//Add user to results.
-						result.add(returnedStatus);
-						
-					}
-					catch (TwitterException e) {
-						e.printStackTrace();
-						//throw new RuntimeException("Failed to unmarshall Status from Redis.");
-					}
-					}
-				}
-				else {
-					//Requires Twitter API request.
-					notFound.add(status);
-				}
-			}
-			
-			logger.info("Found {} cached statuses.", result.size());
-		}
-		else {
-			logger.info("Caching Disabled - No Redis Interface given.");
-		}
-		
 		//Save the intermediate value of results to get number before and after twitter queries.
 		int cachedStatuses = result.size();
 		
 		//Iterate through the statuses not found in cache and gather from Twitter.
 		int index = 0;
-		while (index < notFound.size()) {
+		while (index < statuses.size()) {
 			List<Long> toBeProcessed;	//View of sublist of <=Status ids
 			
 			//Take up to 100 statuses at a time, bounded by size of list.
-			if (index+100 < notFound.size()) {
-				toBeProcessed = notFound.subList(index, index+100);
+			if (index+100 < statuses.size()) {
+				toBeProcessed = statuses.subList(index, index+100);
 				index += 100;
 			}
 			else {
-				toBeProcessed = notFound.subList(index, notFound.size());
-				index = notFound.size();
+				toBeProcessed = statuses.subList(index, statuses.size());
+				index = statuses.size();
 			}
 			
 			//Get the ids of a subset of statuses to check.
@@ -309,30 +264,6 @@ public class AccountChecker {
 			
 			//Add the results.
 			result.addAll(response.stream().collect(Collectors.toList()));
-			
-			//If Redis Interface provided...
-			if (redisApi != null) {
-				//Iterate through all statuses, cache object if in results or cache null
-				//if not in results.
-				//TODO: Simplify/Reduce overhead.
-				Map<Long, Status> mappedResponse = response.stream()
-						.collect(Collectors.toMap(Status::getId, s -> s));
-				
-				for(Long statusId : statusIds) {
-					Status status = mappedResponse.get(statusId);
-					if (status != null) {
-						try {
-							cacheObject(redisApi, status);
-						} catch (JsonProcessingException e) {
-							logger.error("Failed to cache Status object.");
-							e.printStackTrace();
-						}
-					}
-					else {
-						cacheNullRef(redisApi, "status:"+statusId);
-					}
-				}
-			}
 		}
 		
 		logger.info("Retrieved {} statuses.", (result.size() - cachedStatuses));
@@ -562,10 +493,11 @@ public class AccountChecker {
 			String marshalledStatus = mapper.writeValueAsString(status);
 			redisApi.set("status:"+status.getId(), marshalledStatus);
 		}
+		//If object is a UserProfile...
 		else if (o instanceof UserProfile){
 			UserProfile user = (UserProfile) o;
 			String marshalledUserProfile = mapper.writeValueAsString(user);
-			redisApi.set("userprofile", marshalledUserProfile);
+			redisApi.set("userprofile:"+user.getUser().getId(), marshalledUserProfile);
 		}
 		//Else don't know how to store.
 		else {
