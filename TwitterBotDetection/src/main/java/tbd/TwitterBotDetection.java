@@ -1,10 +1,15 @@
 package tbd;
+import java.net.URI;
 import java.util.List;
+
+import javax.ws.rs.core.UriBuilder;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.ml.classification.RandomForestClassificationModel;
 import org.apache.spark.sql.SparkSession;
+import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
+import org.glassfish.jersey.server.ResourceConfig;
 
 import com.lambdaworks.redis.api.sync.RedisCommands;
 
@@ -18,13 +23,26 @@ import util.TwitterConfig;
 import twitter4j.Twitter;
 
 public class TwitterBotDetection {
+	final static Logger logger = LogManager.getLogger(TwitterBotDetection.class);
+	
+	private String addr = "http://localhost:8080";
+	private final URI ADDRESS = UriBuilder.fromPath(addr).build();
+	
+	public TwitterBotDetection() {
+		logger.info("Starting server...");
+		
+		ResourceConfig resourceConfig = new ResourceConfig();
+		resourceConfig.packages("tbd");
+		GrizzlyHttpServerFactory.createHttpServer(ADDRESS, resourceConfig);
+		
+		logger.info("Started server at address: {}", addr);
+	}
 	
 	public static void main(String[] args) {
 		
 		String filename = args[0];
         //XXX: String filename = "/home/adam/labelled10.txt";
 	
-    	Logger logger = LogManager.getLogger(TwitterBotDetection.class);
 		if (logger == null) System.exit(-1);
 
 		//Get a twitter instance and attempt to authenticate with env variables.
@@ -72,6 +90,8 @@ public class TwitterBotDetection {
 		//logger.info("Extracted account features for {} users", features.size());
 		
 		RedisConfig.stopRedis();
+		
+		TwitterBotDetection server = new TwitterBotDetection();
 	}
 
 }

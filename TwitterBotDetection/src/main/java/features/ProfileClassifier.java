@@ -192,7 +192,8 @@ public class ProfileClassifier {
 		logger.debug("Confusion Matrix: \n{}", metrics.confusionMatrix().toString());
 	
 //		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)(model.stages()[2]);
-		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)model.bestModel();
+		PipelineModel plModel = (PipelineModel)model.bestModel();
+		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)plModel.stages()[2];
 		
 		logger.debug("Feature importance: {}", rfModel.featureImportances());
 		//logger.info("Learned classification forest model: {}\n", rfModel.toDebugString());
