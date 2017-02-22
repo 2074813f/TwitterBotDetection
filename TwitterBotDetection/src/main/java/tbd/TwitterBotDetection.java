@@ -1,4 +1,5 @@
 package tbd;
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 
@@ -8,7 +9,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.ml.classification.RandomForestClassificationModel;
 import org.apache.spark.sql.SparkSession;
+import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
+import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 
 import com.lambdaworks.redis.api.sync.RedisCommands;
@@ -23,22 +26,25 @@ import util.TwitterConfig;
 import twitter4j.Twitter;
 
 public class TwitterBotDetection {
-	final static Logger logger = LogManager.getLogger(TwitterBotDetection.class);
+	final static Logger logger = LogManager.getLogger(TwitterBotDetection.class.getName());
 	
-	private String addr = "http://localhost:8080";
-	private final URI ADDRESS = UriBuilder.fromPath(addr).build();
+	private static String addr = "http://localhost:8080";
+	private static final URI ADDRESS = UriBuilder.fromPath(addr).build();
 	
-	public TwitterBotDetection() {
+	public static HttpServer startServer() {
 		logger.info("Starting server...");
 		
+		//Configure REST service
 		ResourceConfig resourceConfig = new ResourceConfig();
-		resourceConfig.packages("tbd");
-		GrizzlyHttpServerFactory.createHttpServer(ADDRESS, resourceConfig);
+		resourceConfig.packages("resources");
+		resourceConfig.register(JacksonFeature.class);
 		
-		logger.info("Started server at address: {}", addr);
+		return GrizzlyHttpServerFactory.createHttpServer(ADDRESS, resourceConfig);
+		
+		//logger.info("Started server at address: {}", addr);
 	}
-	
-	public static void main(String[] args) {
+
+	public static void main(String[] args) throws IOException {
 		
 		String filename = args[0];
         //XXX: String filename = "/home/adam/labelled10.txt";
@@ -87,11 +93,13 @@ public class TwitterBotDetection {
 		
 		RandomForestClassificationModel model = ProfileClassifier.train(spark, users);
 		
-		//logger.info("Extracted account features for {} users", features.size());
+		//TODO: consider registering hook: https://github.com/jersey/jersey/blob/master/examples/jaxb/src/main/java/org/glassfish/jersey/examples/jaxb/App.java
+		
+		HttpServer server = startServer();
+		logger.info("Press any key to exit...");
+		System.in.read();
+		server.shutdownNow();
 		
 		RedisConfig.stopRedis();
-		
-		TwitterBotDetection server = new TwitterBotDetection();
 	}
-
 }
