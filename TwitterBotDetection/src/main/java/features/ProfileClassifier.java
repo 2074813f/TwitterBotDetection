@@ -201,4 +201,69 @@ public class ProfileClassifier {
 		return rfModel;
 	}
 	
+	public static PipelineModel dataExtractor(SparkSession spark, List<Features> features) {
+		
+		String[] rawFeatures = new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceVec"};
+		
+		/*
+		 * Convert UserFeatures objects to Dataset<Row>, transforming features to
+		 * a Spark Vector.
+		 */
+		Encoder<Features> featuresEncoder = Encoders.bean(Features.class);
+		Dataset<Features> rawData = spark.createDataset(features, featuresEncoder);
+		
+		//Show the non-truncated devices for debugging.
+		//rawData.select("mainDevice").show(20, false);
+		
+		//TODO: Should drop elements where we have no statuses before train..() called?
+		//rawData = rawData.filter(rawData.col("urlRatio").gt(0));
+		
+		// Index the mainDevice column.
+		StringIndexer sourceIndexer = new StringIndexer()
+			.setInputCol("mainDevice")
+			.setOutputCol("indexedMainDevice");
+		//	.fit(rawData);
+		//Dataset<Row> indexedData = sourceIndexer.transform(rawData);
+		
+		//Convert label indices -> vectors to reduce bins
+		OneHotEncoder encoder = new OneHotEncoder()
+				.setInputCol("indexedMainDevice")
+				.setOutputCol("mainDeviceVec");
+		
+		// Assemble the features into a vector for classification.
+		VectorAssembler assembler = new VectorAssembler()
+				.setInputCols(rawFeatures)
+				.setOutputCol("features");
+	
+		// Index labels, adding metadata to the label column.
+		// Fit on whole dataset to include all labels in index.
+		StringIndexer labelIndexer = new StringIndexer()
+		  .setInputCol("label")
+		  .setOutputCol("indexedLabel");
+		
+		// see:https://en.wikipedia.org/wiki/Categorical_variable
+		//	   (Essentially an enumerable variable).
+		// Automatically identify categorical features, and index them.
+		// Set maxCategories so features with > 4 distinct values are treated as continuous.
+		VectorIndexer featureIndexer = new VectorIndexer()
+		  .setInputCol("features")
+		  .setOutputCol("indexedFeatures")
+		  .setMaxCategories(4);
+//		Dataset<Row> test = featureIndexer.transform(data);
+//		test.select("indexedFeatures").show(false);
+	
+		// Convert indexed labels back to original labels.
+//		IndexToString labelConverter = new IndexToString()
+//		  .setInputCol("prediction")
+//		  .setOutputCol("predictedLabel")
+//		  .setLabels(labelIndexer.labels());
+	
+		// Chain indexers and forest in a Pipeline
+		PipelineModel pipeline = new Pipeline()
+		  .setStages(new PipelineStage[] {sourceIndexer, encoder, assembler, labelIndexer, featureIndexer})
+		  .fit(rawData);
+
+		return pipeline;
+	}
+	
 }

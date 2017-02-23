@@ -280,6 +280,78 @@ public class AccountChecker {
 	}
 	
 	/**
+	 * Retrieves a single user from twitter.
+	 * 
+	 * If a Redis Interface is provided, utilizes caching of UserProfiles.
+	 * 
+	 */
+	public static UserProfile getUser(Twitter twitter, RedisCommands<String, String> redisApi, 
+			long userid) throws RuntimeException {
+		UserProfile result = new UserProfile();
+		
+		//##### Check Cache #####
+		//If Redis Interface provided...
+		if (redisApi != null) {
+			//Check for redis key entry.
+			String returned = redisApi.get("userprofile:" + userid);
+			if (returned != null && returned != "null") {
+				try {
+					//Unmarshell UserProfile.
+					UserProfile returnedUser = mapper.readValue(returned, UserProfile.class);
+					
+					return returnedUser;
+				}
+				catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		else {
+			logger.info("Caching Disabled - No Redis Interface given.");
+		}
+		
+		//##### Non-Cached #####
+		//If not cached we must get from twitter.
+		while(true) {
+			try {
+				//##### Get User #####
+				User user = twitter.showUser(userid);
+				
+				//If we didn't find the user we must abort.
+				if (user == null) return null;
+				else result.setUser(user, TwitterObjectFactory.getRawJSON(user));
+				
+				//##### Get UserTimeline #####
+				lookupUserTimeline(twitter, result);
+				return result;
+			}
+			catch (TwitterException e) {
+				//Rate limit exceeded, back off, wait, and try again.
+				if (e.getStatusCode() == 503 || e.getStatusCode() == 429){
+					logger.info("Rate limit exceeded");
+					
+					try {
+						//Get the recommended wait time and sleep until then.
+						int retryafter = e.getRetryAfter();
+						Thread.sleep(retryafter / 1000);
+					}
+					catch (InterruptedException i) {
+						logger.error("Sleeping thread interrupted for some reason ??? aborting.");
+						throw new RuntimeException();
+					}
+					
+					//Try again.
+					continue;
+				}
+				else {
+					logger.error("Error checking user profile: ", e);
+					throw new RuntimeException();
+				}
+			}
+		}
+	}
+	
+	/**
 	 * Does the lookup for batches of users.
 	 * 
 	 * @param users

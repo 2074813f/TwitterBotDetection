@@ -2,11 +2,13 @@ package tbd;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.core.UriBuilder;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.spark.ml.PipelineModel;
 import org.apache.spark.ml.classification.RandomForestClassificationModel;
 import org.apache.spark.sql.SparkSession;
 import org.glassfish.grizzly.http.server.HttpServer;
@@ -19,6 +21,7 @@ import com.lambdaworks.redis.api.sync.RedisCommands;
 import accountProperties.AccountChecker;
 import features.FeatureExtractor;
 import features.ProfileClassifier;
+import models.Features;
 import models.LabelledUser;
 import models.UserProfile;
 import util.RedisConfig;
@@ -30,6 +33,10 @@ public class TwitterBotDetection {
 	
 	private static String addr = "http://localhost:8080";
 	private static final URI ADDRESS = UriBuilder.fromPath(addr).build();
+	
+	public static Twitter twitter;
+	public static RedisCommands<String, String> redisApi;
+	public static SparkSession spark;
 	
 	public static HttpServer startServer() {
 		logger.info("Starting server...");
@@ -46,23 +53,35 @@ public class TwitterBotDetection {
 
 	public static void main(String[] args) throws IOException {
 		
-		String filename = args[0];
+		//TODO: consider registering hook: https://github.com/jersey/jersey/blob/master/examples/jaxb/src/main/java/org/glassfish/jersey/examples/jaxb/App.java
+		
+		//Build the models.
+		buildModels();
+		
+		HttpServer server = startServer();
+		logger.info("Press any key to exit...");
+		System.in.read();
+		server.shutdownNow();
+	}
+	
+	public static void buildModels() throws IOException {
+		//Build the classifier at construction time.
+		
+		//TODO: move to properties file.
+		//String filename = args[0];
+		String filename = "src/test/resources/labelled100.txt";
         //XXX: String filename = "/home/adam/labelled10.txt";
 	
 		if (logger == null) System.exit(-1);
 
 		//Get a twitter instance and attempt to authenticate with env variables.
-		Twitter twitter = TwitterConfig.authTwitter();
+		twitter = TwitterConfig.authTwitter();
 		
 		//Connect to the Redis server.
-		RedisCommands<String, String> redisApi = RedisConfig.startRedis();
+		redisApi = RedisConfig.startRedis();
 		
 		//Read statuses from file.
 		//List<UserProfile> users = DataCapture.readStatusFile(args[0]);
-		
-		//Remove inaccessible users.
-		//users = AccountChecker.filter_accessible(twitter, users);
-		//logger.info("Reduced to {} usable users.", users.size());
 		
 		//ENTITY COLLECTION
 		//FOR LABELLED
@@ -80,7 +99,7 @@ public class TwitterBotDetection {
 		logger.info("Breakdown: {} humans, {} bots", humans, bots);
 		
 		//Create the spark session.
-		SparkSession spark = SparkSession
+		spark = SparkSession
 				.builder()
 				.appName("TwitterBotDetection")
 				.config("spark.master", "local")
@@ -88,18 +107,16 @@ public class TwitterBotDetection {
 		
 		//FEATURE EXTRACTION
 		FeatureExtractor.extractFeatures(users);
+		List<Features> features = users.stream().map(UserProfile::getFeatures).collect(Collectors.toList());
 		
 		//NaiveBayesModel model = StatusClassifier.trainBayesClassifier(spark, users);
 		
+		//Set the model here.
 		RandomForestClassificationModel model = ProfileClassifier.train(spark, users);
+		PipelineModel pmodel = ProfileClassifier.dataExtractor(spark, features);
 		
-		//TODO: consider registering hook: https://github.com/jersey/jersey/blob/master/examples/jaxb/src/main/java/org/glassfish/jersey/examples/jaxb/App.java
-		
-		HttpServer server = startServer();
-		logger.info("Press any key to exit...");
-		System.in.read();
-		server.shutdownNow();
-		
-		RedisConfig.stopRedis();
+		//Save the models to file.
+		model.write().overwrite().save("src/main/resources/tmp/model");
+		pmodel.write().overwrite().save("src/main/resources/tmp/pmodel");
 	}
 }

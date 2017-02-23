@@ -32,38 +32,49 @@ public class FeatureExtractor {
 		}
 		
 		for (UserProfile user : users) {
-			
-			Features features = new Features();
-			
-			//Set the label and id.
-			features.setId(user.getUser().getId());
-			features.setLabel(user.getLabel());
-			
-			//##### Profile Features #####
-			//Demographics
-			//	Account Health
-			//	Screen Name Length
-			features.setScreenNameLength(nameLength(user));
-			//TODO: protected
-			
-			//Content
-			//Network
-			//	#Following/#Followers
-			features.setFollowerRatio(followerRatio(user));
-			
-			//	%Bidirectional friends
-			//TODO: Tackle without getting rate limited.
-			
-			//History
-			//	Account Age / Account Registration Date
-			//	Account Verified
-			
-			//##### Status Features #####
-			extractFromStatuses(features, user);
-			
-			//Set the feature vector in the UserProfile object.
-			user.setFeatures(features);
+			extractFeatures(user);
 		}
+	}
+	
+	/**
+	 * Populates the feature vector for a given user.
+	 * 
+	 * Extracts features based on
+	 * account information and status metadata.
+	 * 
+	 * @param users
+	 */
+	public static void extractFeatures(UserProfile user) {
+		Features features = new Features();
+		
+		//Set the label and id.
+		features.setId(user.getUser().getId());
+		features.setLabel(user.getLabel());
+		
+		//##### Profile Features #####
+		//Demographics
+		//	Account Health
+		//	Screen Name Length
+		features.setScreenNameLength(nameLength(user));
+		//TODO: protected
+		
+		//Content
+		//Network
+		//	#Following/#Followers
+		features.setFollowerRatio(followerRatio(user));
+		
+		//	%Bidirectional friends
+		//TODO: Tackle without getting rate limited.
+		
+		//History
+		//	Account Age / Account Registration Date
+		//	Account Verified
+		
+		//##### Status Features #####
+		extractFromStatuses(features, user);
+		
+		//Set the feature vector in the UserProfile object.
+		user.setFeatures(features);
 	}
 	
 	/**
@@ -83,7 +94,7 @@ public class FeatureExtractor {
 	 * @return - the ratio as a float value.
 	 */
 	private static float followerRatio(UserProfile user) {
-		return (float)user.getUser().getFriendsCount() / user.getUser().getFollowersCount();
+		return ((float)user.getUser().getFriendsCount() + 1) / (user.getUser().getFollowersCount() + 1);
 	}
 	
 	/**
