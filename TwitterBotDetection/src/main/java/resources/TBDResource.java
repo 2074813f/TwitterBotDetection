@@ -1,5 +1,6 @@
 package resources;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -15,6 +16,8 @@ import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.lambdaworks.redis.api.sync.RedisCommands;
 
 import accountProperties.AccountChecker;
@@ -23,6 +26,7 @@ import features.ProfileClassifier;
 import models.Features;
 import models.LabelledUser;
 import models.UserProfile;
+import serializer.UserProfileObjectMapper;
 import tbd.DataCapture;
 import tbd.TwitterBotDetection;
 import twitter4j.Twitter;
@@ -40,6 +44,7 @@ import util.TwitterConfig;
  */
 public class TBDResource {
 	final static Logger logger = LogManager.getLogger(TwitterBotDetection.class.getName());
+	static UserProfileObjectMapper mapper = new UserProfileObjectMapper();
 	
 	Twitter twitter;
 	RedisCommands<String, String> redisApi;
@@ -55,16 +60,17 @@ public class TBDResource {
 		spark = TwitterBotDetection.spark;
 		
 		//Load the models.
-		model = RandomForestClassificationModel.load("src/main/resources/tmp/model");
-		pmodel = PipelineModel.load("src/main/resources/tmp/pmodel");
+		model = RandomForestClassificationModel.load("tmp/model");
+		pmodel = PipelineModel.load("tmp/pmodel");
 	}
 	
 	public String queryModel(long userid) {
+		//Get the user.
 		UserProfile user = AccountChecker.getUser(twitter, redisApi, userid);
 		user.setLabel("human");	//XXX
 		FeatureExtractor.extractFeatures(user);
 		
-		//TODO: Transform the userid -> feature vector.
+		//Extract user features.
 		logger.info("Extracting features for user: {}", userid);
 		List<Features> features = new ArrayList<Features>();
 		features.add(user.getFeatures());
@@ -89,10 +95,25 @@ public class TBDResource {
 		return result;
 	}
 	
-	public RandomForestClassificationModel getModel() {
-		return model;
-	}
-	public void setModel(RandomForestClassificationModel model) {
-		this.model = model;
+	public void classifyUser(long userid, String label) throws JsonParseException, JsonMappingException, IOException {
+		//Check if user exists already.
+		String key = "userprofile:"+userid;
+		String marshalleduser = redisApi.get(key);
+		UserProfile user;
+		
+		//If exists, retrieve, update value, and store.
+		if (marshalleduser != null) {
+			user = mapper.readValue(marshalleduser, UserProfile.class);
+			user.setLabel(label);
+		}
+		//Else retrieve, build and set.
+		else {
+			user = AccountChecker.getUser(twitter, redisApi, userid);
+			FeatureExtractor.extractFeatures(user);
+			user.setLabel(label);
+		}
+		
+		String updated = mapper.writeValueAsString(user);
+		redisApi.set(key, updated);
 	}
 }

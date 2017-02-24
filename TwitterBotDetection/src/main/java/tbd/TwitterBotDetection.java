@@ -116,7 +116,7 @@ public class TwitterBotDetection {
 		PipelineModel pmodel = ProfileClassifier.dataExtractor(spark, features);
 		
 		//Save the models to file.
-		model.write().overwrite().save("src/main/resources/tmp/model");
-		pmodel.write().overwrite().save("src/main/resources/tmp/pmodel");
+		model.write().overwrite().save("tmp/model");
+		pmodel.write().overwrite().save("tmp/pmodel");
 	}
 }
