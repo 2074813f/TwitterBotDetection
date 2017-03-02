@@ -1,5 +1,7 @@
 package resources;
 
+import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -41,18 +43,19 @@ public class TBDService {
 	
 	@POST
 	@Path("/label")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response label(@QueryParam("userid") long userid, @QueryParam ("label") String label) {
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.TEXT_PLAIN)
+	public Response label(final UserLabel request) {
 		String message;
 		
 		try {
-			tbdResource.classifyUser(userid, label);
-			message = "Successfully updated user:"+userid;
+			tbdResource.classifyUser(request.getUserid(), request.getLabel());
+			message = "Successfully updated user:"+request.getUserid();
 			
 			return Response.ok(message).build();
 		}
 		catch (Exception e) {
-			message = String.format("Failed to update user: %d with exception: %s", userid, e.getClass().getName());
+			message = String.format("Failed to update user: %d with exception: %s", request.getUserid(), e.getClass().getName());
 			
 			return Response.serverError().entity(message).build();
 		}

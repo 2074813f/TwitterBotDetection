@@ -46,9 +46,8 @@ public class TwitterBotDetection {
 		resourceConfig.packages("resources");
 		resourceConfig.register(JacksonFeature.class);
 		
+		logger.info("Started server at address: {}", addr);
 		return GrizzlyHttpServerFactory.createHttpServer(ADDRESS, resourceConfig);
-		
-		//logger.info("Started server at address: {}", addr);
 	}
 
 	public static void main(String[] args) throws IOException {

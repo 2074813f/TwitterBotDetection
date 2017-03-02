@@ -2,17 +2,33 @@ package restTests;
 
 import static org.junit.Assert.*;
 
-import javax.ws.rs.core.Application;
+import java.io.IOException;
 
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.Application;
+import javax.ws.rs.core.Form;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
+
+import org.apache.commons.collections.map.MultiValueMap;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
+import org.junit.Before;
 import org.junit.Test;
 
+import resources.TBDResource;
 import resources.UserClassification;
+import resources.UserLabel;
+import tbd.TwitterBotDetection;
 
 public class ServerTest extends JerseyTest {
+	
+	@Before
+	public void setUpModels() throws IOException {
+		TwitterBotDetection.buildModels();
+	}
 	
 	@Override
 	protected Application configure() {
@@ -32,13 +48,31 @@ public class ServerTest extends JerseyTest {
 	public void testClassify() {
 		UserClassification expected = new UserClassification();
 		expected.setLabel("human");
-		expected.setUserid(2074813);
+		expected.setUserid(791455969016442881l);
 		
-		final UserClassification response = target("/rest/classify/")
-				.queryParam("userid", 2074813)
+		UserClassification response = target("/rest/classify/")
+				.queryParam("userid", 791455969016442881l)
 				.request()
 				.get(UserClassification.class);
 		
-		assertTrue(response.equals(expected));
+		//We don't know the result of the classification so we can
+		//Only check for a valid response.
+		assertTrue(response != null);
+		assertTrue(response.getLabel() != null && response.getUserid() == expected.getUserid());
+	}
+	
+	@Test
+	public void testLabel() {
+		String userid = "791455969016442881";
+		
+		UserLabel request = new UserLabel();
+		request.setUserid(Long.parseLong(userid));
+		request.setLabel("human");
+		
+		String response = target("/rest/label")
+				.request()
+				.post(Entity.entity(request,MediaType.APPLICATION_JSON), String.class);
+		
+		assertTrue(response.compareTo("Successfully updated user:"+userid) == 0);
 	}
 }

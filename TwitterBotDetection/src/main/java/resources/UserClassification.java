@@ -7,6 +7,7 @@ import javax.xml.bind.annotation.XmlRootElement;
  * JSON response POJO with Jackson annotations for use in
  * response for /rest/classify...
  * 
+ * @see resources.TBDService
  * @author Adam
  *
  */
