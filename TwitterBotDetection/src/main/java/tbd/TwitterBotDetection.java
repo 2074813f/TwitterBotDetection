@@ -12,6 +12,7 @@ import org.apache.spark.ml.PipelineModel;
 import org.apache.spark.ml.classification.RandomForestClassificationModel;
 import org.apache.spark.sql.SparkSession;
 import org.glassfish.grizzly.http.server.HttpServer;
+import org.glassfish.grizzly.http.server.StaticHttpHandler;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -46,8 +47,13 @@ public class TwitterBotDetection {
 		resourceConfig.packages("resources");
 		resourceConfig.register(JacksonFeature.class);
 		
+		HttpServer server = GrizzlyHttpServerFactory.createHttpServer(ADDRESS, resourceConfig);
+		
+		//Serve static resources e.g. Index.html
+		server.getServerConfiguration().addHttpHandler(new StaticHttpHandler("src/main/webapp"), "/");
+		
 		logger.info("Started server at address: {}", addr);
-		return GrizzlyHttpServerFactory.createHttpServer(ADDRESS, resourceConfig);
+		return server;
 	}
 
 	public static void main(String[] args) throws IOException {

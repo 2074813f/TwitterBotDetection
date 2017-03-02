@@ -57,6 +57,8 @@ dependencies {
 
 //Configure "run" task to take arguments via System property.
 run {
+	standardInput = System.in
+
     /* Need to split the space-delimited value in the property*/
     if (project.hasProperty('cliargs')) {
         args(cliargs)
