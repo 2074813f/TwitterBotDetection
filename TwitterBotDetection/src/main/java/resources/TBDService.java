@@ -26,14 +26,15 @@ public class TBDService {
 	@GET
 	@Path("/classify")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response classify(@QueryParam("userid") long userid) {
+	public Response classify(@QueryParam("userid") String userid) {
 		//Response object.
 		UserClassification response = new UserClassification();
 		
-		String label = tbdResource.queryModel(userid);
+                long parsedUserid = Long.parseLong(userid);
+		String label = tbdResource.queryModel(parsedUserid);
 		
 		//Set the fields in the response object.
-		response.setUserid(userid);
+		response.setUserid(parsedUserid);
 		response.setLabel(label);
 		
 		//TODO: allow throwing errors to here and catch, respond with error status code.

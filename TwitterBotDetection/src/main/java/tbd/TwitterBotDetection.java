@@ -50,7 +50,7 @@ public class TwitterBotDetection {
 		HttpServer server = GrizzlyHttpServerFactory.createHttpServer(ADDRESS, resourceConfig);
 		
 		//Serve static resources e.g. Index.html
-		server.getServerConfiguration().addHttpHandler(new StaticHttpHandler("src/main/webapp"), "/");
+		server.getServerConfiguration().addHttpHandler(new StaticHttpHandler("src/main/webapp"), "/client");
 		
 		logger.info("Started server at address: {}", addr);
 		return server;
