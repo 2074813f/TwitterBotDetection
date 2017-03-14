@@ -140,9 +140,12 @@ public class FeatureExtractor {
 			numMentions += status.getUserMentionEntities().length;
 			
 			//TODO:Client Makeup (Most common)
+			//XXX:BUGFIX: does this actually increment????
 			String device = status.getSource();
-			int count = clientDevices.containsKey(device) ? clientDevices.get(device) : 0;
-			clientDevices.put(device, count);
+			if (device != null && !device.equals("")) {
+				int count = clientDevices.containsKey(device) ? clientDevices.get(device) : 0;
+				clientDevices.put(device, count);
+			}
 		}
 		
 		//TODO:set feature fields.

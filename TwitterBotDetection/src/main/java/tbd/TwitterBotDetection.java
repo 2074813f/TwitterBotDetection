@@ -1,6 +1,7 @@
 package tbd;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -73,9 +74,8 @@ public class TwitterBotDetection {
 		//Build the classifier at construction time.
 		
 		//TODO: move to properties file.
-		//String filename = args[0];
-		String filename = "src/test/resources/labelled100.txt";
-        //XXX: String filename = "/home/adam/labelled10.txt";
+		//String filename = "src/test/resources/labelled100.txt";
+        String filename = "D:\\Documents\\Uni_Work\\Level4_Project\\ASONAM_honeypot_data\\ASONAM_honeypot_data\\honeypot.txt";
 	
 		if (logger == null) System.exit(-1);
 
@@ -91,17 +91,38 @@ public class TwitterBotDetection {
 		//ENTITY COLLECTION
 		//FOR LABELLED
 		List<LabelledUser> labelledUsers = DataCapture.readLabelledFile(filename);
-		List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, labelledUsers);
-		logger.info("Reduced to {} usable users.", users.size());
 		
-		int bots = 0;
-		int humans = 0;
-		for (UserProfile user : users) {
-			if (user.getLabel() != null && user.getLabel().compareTo("human") == 0) humans++;
-			if (user.getLabel() != null && user.getLabel().compareTo("bot") == 0) bots++;
+		List<Features> features = new ArrayList<Features>();
+		
+		int index = 0;
+		int total = 0;
+		while (index < labelledUsers.size()) {
+			List<LabelledUser> toProcess;
+			
+			//Take up to 100 users at a time, bounded by size of list.
+			if (index+100 < labelledUsers.size()) {
+				toProcess = labelledUsers.subList(index, index+100);
+				index += 100;
+			}
+			else {
+				toProcess = labelledUsers.subList(index, labelledUsers.size());
+				index = labelledUsers.size();
+			}
+			
+			List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, toProcess);
+			total += users.size();
+			
+			//FEATURE EXTRACTION
+			//Add all the features for each batch to the full set.
+			FeatureExtractor.extractFeatures(users);
+			features.addAll(users.stream().map(UserProfile::getFeatures).collect(Collectors.toList()));
 		}
 		
-		logger.info("Breakdown: {} humans, {} bots", humans, bots);
+		//TODO: Change to each batch.
+		logger.info("Finished Collecting Raw Data && Feature Extraction.");
+		logger.debug("Produced {} sets of features from {} users.", features.size(), total);
+		
+		logger.info("Creating Spark Session.");
 		
 		//Create the spark session.
 		spark = SparkSession
@@ -110,14 +131,10 @@ public class TwitterBotDetection {
 				.config("spark.master", "local")
 				.getOrCreate();
 		
-		//FEATURE EXTRACTION
-		FeatureExtractor.extractFeatures(users);
-		List<Features> features = users.stream().map(UserProfile::getFeatures).collect(Collectors.toList());
-		
 		//NaiveBayesModel model = StatusClassifier.trainBayesClassifier(spark, users);
 		
 		//Set the model here.
-		RandomForestClassificationModel model = ProfileClassifier.train(spark, users);
+		RandomForestClassificationModel model = ProfileClassifier.train(spark, features);
 		PipelineModel pmodel = ProfileClassifier.dataExtractor(spark, features);
 		
 		//Save the models to file.

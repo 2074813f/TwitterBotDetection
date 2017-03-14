@@ -18,6 +18,7 @@ import models.LabelledUser;
 import models.UserProfile;
 import serializer.UserProfileObjectMapper;
 import twitter4j.Paging;
+import twitter4j.RateLimitStatus;
 import twitter4j.ResponseList;
 import twitter4j.Status;
 import twitter4j.Twitter;
@@ -66,7 +67,8 @@ public class AccountChecker {
 			//Check for cached users.
 			for (LabelledUser user : users) {
 				String returned = redisApi.get("userprofile:" + user.getUserId());
-				if (returned != null && returned != "null") {
+				//If we have a null reference for the user, don't add to result and don't retrieve.
+				if (returned != null && !returned.equals("null")) {
 					try {
 						//Unmarshell UserProfile.
 						UserProfile returnedUser = mapper.readValue(returned, UserProfile.class);
@@ -175,8 +177,19 @@ public class AccountChecker {
 			
 		}
 		
+		//Iterate through notFound (not cached) and remove entries that were retrieved
+		//leaving those we should add as null refs.
+		for (LabelledUser user : notFound) {
+			if (newResult.containsKey(user.getUserId())) {
+				//Cache a null entry for this userid.
+				cacheNullRef(redisApi, "userprofile:"+user.getUserId());
+			}
+		}
+		
+		//TODO: Do not get statuses for users that cannot be retrieved, i.e. null.
+		
 		//TODO: Do not gather for cached users once userProfile caching implemented
-		//##### Get the statuses #####
+		//##### Get the training statuses #####
 		
 		//Retrieve all the statuses from Twitter.
 		List<Status> retrievedStatuses = getStatuses(twitter, redisApi, allStatuses);
@@ -470,7 +483,7 @@ public class AccountChecker {
 	
 	private static void lookupUserTimeline(Twitter twitter, UserProfile user) {
 		
-		int statusLimit = 100;
+		int statusLimit = 50;
 		Paging page = new Paging(1, statusLimit);
 		
 		//If the user is protected we cannot retrieve their timeline.
@@ -503,12 +516,15 @@ public class AccountChecker {
 			catch (TwitterException e) {
 				//Rate limit exceeded, back off, wait, and try again.
 				if (e.getStatusCode() == 429 || e.getErrorCode() == 88){
-					logger.info("Rate limit exceeded, waiting...");
 					
+					//TODO:make more precise with ratelimitstatus
 					try {
 						//Get the recommended wait time and sleep until then.
-						int retryafter = e.getRetryAfter();
-						Thread.sleep(retryafter * 1000);		//Convert from s -> ms
+						//int retryafter = e.getRetryAfter() * 1000;		//Convert from s -> ms
+						int retryafter = 60 * 1000;	//Arbitrary retry after 30s
+						logger.info("Rate limit exceeded, waiting {}ms ...", retryafter);
+						
+						Thread.sleep(retryafter);
 					}
 					catch (InterruptedException i) {
 						logger.error("Sleeping thread interrupted for some reason ??? aborting.");

@@ -5,7 +5,9 @@ import tbd.TwitterBotDetection;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
@@ -55,13 +57,9 @@ public class ProfileClassifier {
 	
 	static Logger logger = LogManager.getLogger(TwitterBotDetection.class);
 	
-	public static RandomForestClassificationModel train(SparkSession spark, List<UserProfile> users) {
-		//Collect the features from all users.
-		List<Features> features = users.stream().map(UserProfile::getFeatures).collect(Collectors.toList());
-		
-		logger.debug("Produced {} sets of features from {} users.", features.size(), users.size());
-		
-		RandomForestClassificationModel model = trainRFClassifier(spark, features);
+	public static RandomForestClassificationModel train(SparkSession spark, List<Features> userFeatures) {
+
+		RandomForestClassificationModel model = trainRFClassifier(spark, userFeatures);
 		return model;
 	}
 	
@@ -80,10 +78,14 @@ public class ProfileClassifier {
 		Dataset<Features> rawData = spark.createDataset(features, featuresEncoder);
 		
 		//Show the non-truncated devices for debugging.
-		//rawData.select("mainDevice").show(20, false);
+		rawData.filter(rawData.col("mainDevice").eqNullSafe("")).show(20, false);
 		
 		//TODO: Should drop elements where we have no statuses before train..() called?
 		//rawData = rawData.filter(rawData.col("urlRatio").gt(0));
+		
+//		Map<String, String> mapping = new HashMap<String, String>();
+//		mapping.put("", "NA");
+//		rawData.na().replace("MainDevice", mapping);
 		
 		// Index the mainDevice column.
 		StringIndexerModel sourceIndexer = new StringIndexer()
