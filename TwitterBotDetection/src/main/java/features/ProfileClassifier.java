@@ -77,9 +77,6 @@ public class ProfileClassifier {
 		Encoder<Features> featuresEncoder = Encoders.bean(Features.class);
 		Dataset<Features> rawData = spark.createDataset(features, featuresEncoder);
 		
-		//Show the non-truncated devices for debugging.
-		rawData.filter(rawData.col("mainDevice").eqNullSafe("")).show(20, false);
-		
 		//TODO: Should drop elements where we have no statuses before train..() called?
 		//rawData = rawData.filter(rawData.col("urlRatio").gt(0));
 		
@@ -127,7 +124,7 @@ public class ProfileClassifier {
 //		test.select("indexedFeatures").show(false);
 	
 		// Split the data into training and test sets (40% held out for testing)
-		Dataset<Row>[] splits = data.randomSplit(new double[] {0.7, 0.3}, seed);
+		Dataset<Row>[] splits = data.randomSplit(new double[] {0.6, 0.4}, seed);
 		Dataset<Row> trainingData = splits[0];
 		Dataset<Row> testData = splits[1];
 	
@@ -137,7 +134,6 @@ public class ProfileClassifier {
 		  .setLabelCol("indexedLabel")
 		  .setFeaturesCol("indexedFeatures")
 		  .setSeed(seed)
-		  .setNumTrees(10)
 		  .setMaxBins(30);
 	
 		// Convert indexed labels back to original labels.
@@ -156,7 +152,15 @@ public class ProfileClassifier {
 		  .setPredictionCol("prediction")
 		  .setMetricName("accuracy");
 		
-		ParamMap[] paramGrid = new ParamGridBuilder().build();
+		/*
+		 * Tune 3 choices for numTrees, 3 for maxDepth, giving 3 x 3 grid = 
+		 * hence 9 parameter settings for CrossValidator to choose from.
+		 */
+		ParamMap[] paramGrid = new ParamGridBuilder()
+				.addGrid(rf.numTrees(), new int[] {10, 100, 1000})
+				.addGrid(rf.maxDepth(), new int[] {rf.getMaxDepth(), 5, 10})
+				//TODO: Min info gain.
+				.build();
 		
 		CrossValidator cv = new CrossValidator()
 				.setEstimator(pipeline)

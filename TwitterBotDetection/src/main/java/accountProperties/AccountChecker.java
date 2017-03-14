@@ -67,8 +67,15 @@ public class AccountChecker {
 			//Check for cached users.
 			for (LabelledUser user : users) {
 				String returned = redisApi.get("userprofile:" + user.getUserId());
-				//If we have a null reference for the user, don't add to result and don't retrieve.
-				if (returned != null && !returned.equals("null")) {
+				
+				//If there is no reference then we have not seen user before - collect from Twitter.
+				if (returned == null) {
+					//Requires Twitter API request.
+					notFound.add(user);
+				}
+				
+				//If we have a reference for the user that is not null, we can get the user as normal.
+				else if (!returned.equals("null")) {
 					try {
 						//Unmarshell UserProfile.
 						UserProfile returnedUser = mapper.readValue(returned, UserProfile.class);
@@ -79,10 +86,8 @@ public class AccountChecker {
 						e.printStackTrace();
 					}
 				}
-				else {
-					//Requires Twitter API request.
-					notFound.add(user);
-				}
+				
+				//Else we have already seen the user and could not retrieve them.
 			}
 			
 			logger.info("Found {} cached UserProfiles.", result.size());
@@ -110,10 +115,10 @@ public class AccountChecker {
 		List<Long> allStatuses = new ArrayList<Long>();
 		
 		//First removed found cached users.
-		users = users.stream().filter(u -> !result.containsKey(u.getUserId())).collect(Collectors.toList());
+		//users = users.stream().filter(u -> !result.containsKey(u.getUserId())).collect(Collectors.toList());
 		
 		//Do the mapping
-		users.stream().forEach(
+		notFound.stream().forEach(
 				user -> {
 					//mappedUsers i.e. {userId, label}
 					mappedUsers.put(user.getUserId(), user.getLabel());
@@ -180,15 +185,12 @@ public class AccountChecker {
 		//Iterate through notFound (not cached) and remove entries that were retrieved
 		//leaving those we should add as null refs.
 		for (LabelledUser user : notFound) {
-			if (newResult.containsKey(user.getUserId())) {
+			if (!newResult.containsKey(user.getUserId())) {
 				//Cache a null entry for this userid.
 				cacheNullRef(redisApi, "userprofile:"+user.getUserId());
 			}
 		}
 		
-		//TODO: Do not get statuses for users that cannot be retrieved, i.e. null.
-		
-		//TODO: Do not gather for cached users once userProfile caching implemented
 		//##### Get the training statuses #####
 		
 		//Retrieve all the statuses from Twitter.
@@ -203,7 +205,6 @@ public class AccountChecker {
 			newResult.get(userId).addTrainingStatus(status);
 		});
 		
-		//TODO: Do not gather for cached users once userProfile caching implemented.
 		//##### Get the UserTimelines #####
 		
 		//Only do the lookup for users we did not find during caching.
