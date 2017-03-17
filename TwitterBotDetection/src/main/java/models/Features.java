@@ -19,6 +19,7 @@ public class Features implements Serializable {
 	private float hashtagRatio;
 	private float mentionRatio;
 	private int uniqueDevices;
+	private int mainDeviceCount;
 	private String mainDevice;
 
 	public Features() {
@@ -73,14 +74,16 @@ public class Features implements Serializable {
 	public void setMainDevice(String mainDevice) {
 		this.mainDevice = mainDevice;
 	}
-
-
 	public int getUniqueDevices() {
 		return uniqueDevices;
 	}
-
-
 	public void setUniqueDevices(int uniqueDevices) {
 		this.uniqueDevices = uniqueDevices;
+	}
+	public int getMainDeviceCount() {
+		return mainDeviceCount;
+	}
+	public void setMainDeviceCount(int mainDeviceCount) {
+		this.mainDeviceCount = mainDeviceCount;
 	}
 }

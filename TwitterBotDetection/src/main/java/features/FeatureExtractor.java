@@ -1,5 +1,8 @@
 package features;
 
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -117,6 +120,8 @@ public class FeatureExtractor {
 			features.setUrlRatio(-1.0F);
 			features.setHashtagRatio(-1.0F);
 			features.setMentionRatio(-1.0F);
+			features.setUniqueDevices(0);
+			features.setMainDeviceCount(0);
 			features.setMainDevice("NA");
 			return;
 		};
@@ -127,6 +132,7 @@ public class FeatureExtractor {
 		int numHashTags = 0;
 		int numMentions = 0;
 		
+		//##### Iterate and get raw features from statuses #####
 		for (Status status : statusList) {
 			//TODO:#Tweets with URLs / #Tweets
 			if (status.getURLEntities().length > 0) numStatusesWithURL++;
@@ -144,9 +150,17 @@ public class FeatureExtractor {
 			String device = status.getSource();
 			if (device != null && !device.equals("")) {
 				int count = clientDevices.containsKey(device) ? clientDevices.get(device) : 0;
-				clientDevices.put(device, count);
+				clientDevices.put(device, count+1);
 			}
+			
+			//TODO: Temporal
+			//TODO: Consider Trimming tail and head days.
+			//TODO: Consider more efficient impl.
+			//Date createdAt = status.getCreatedAt();
+			
 		}
+		
+		//##### Extract features from raw status info #####
 		
 		//TODO:set feature fields.
 		features.setUrlRatio((float)numStatusesWithURL / numStatuses);
@@ -169,6 +183,7 @@ public class FeatureExtractor {
 		}
 		
 		features.setMainDevice(highestDevice);
+		features.setMainDeviceCount(highestCount);
 		features.setUniqueDevices(clientDevices.size());
 	}
 

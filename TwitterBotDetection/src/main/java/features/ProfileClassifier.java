@@ -1,14 +1,8 @@
 package features;
 
-import models.UserProfile;
 import tbd.TwitterBotDetection;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,7 +11,6 @@ import org.apache.spark.ml.PipelineModel;
 import org.apache.spark.ml.PipelineStage;
 import org.apache.spark.ml.classification.RandomForestClassificationModel;
 import org.apache.spark.ml.classification.RandomForestClassifier;
-import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator;
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator;
 import org.apache.spark.ml.feature.IndexToString;
 import org.apache.spark.ml.feature.OneHotEncoder;
@@ -35,16 +28,9 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.types.StructField;
-import org.apache.spark.sql.types.StructType;
-import static org.apache.spark.sql.types.DataTypes.*;
 
-import models.LabelledStatus;
 import models.Features;
-import twitter4j.Twitter;
-import twitter4j.User;
 
 /**
  * Set of methods to extract features of account properties.
@@ -65,10 +51,10 @@ public class ProfileClassifier {
 	
 	public static RandomForestClassificationModel trainRFClassifier(SparkSession spark, List<Features> features) {
 		
-		long seed = 207335481L;
+		long seed = 207325481L;
 		logger.info("Training with seed: {}", seed);
 		
-		String[] rawFeatures = new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceVec"};
+		String[] rawFeatures = new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "mainDeviceVec"};
 		
 		/*
 		 * Convert UserFeatures objects to Dataset<Row>, transforming features to
@@ -90,6 +76,7 @@ public class ProfileClassifier {
 			.setOutputCol("indexedMainDevice")
 			.fit(rawData);
 		Dataset<Row> indexedData = sourceIndexer.transform(rawData);
+		indexedData.show();
 		
 		//Convert label indices -> vectors to reduce bins
 		OneHotEncoder encoder = new OneHotEncoder()
@@ -102,7 +89,6 @@ public class ProfileClassifier {
 				.setInputCols(rawFeatures)
 				.setOutputCol("features");
 		Dataset<Row> data = assembler.transform(indexedData);
-		data.show();
 	
 		// Index labels, adding metadata to the label column.
 		// Fit on whole dataset to include all labels in index.
@@ -194,12 +180,16 @@ public class ProfileClassifier {
 		Dataset<Row> predictionAndLabels = predictions.select("prediction", "indexedLabel");
 		MulticlassMetrics metrics = new MulticlassMetrics(predictionAndLabels);
 		
+		logger.debug("##### Training Statistics #####");
 		logger.debug("Accuracy: {}", metrics.accuracy());
 		logger.debug("Confusion Matrix: \n{}", metrics.confusionMatrix().toString());
-	
+		
 //		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)(model.stages()[2]);
 		PipelineModel plModel = (PipelineModel)model.bestModel();
 		RandomForestClassificationModel rfModel = (RandomForestClassificationModel)plModel.stages()[2];
+		
+		logger.debug("Best numTrees: {}", rfModel.getNumTrees());
+		logger.debug("Best maxDepth: {}", rfModel.getMaxDepth());
 		
 		logger.debug("Feature importance: {}", rfModel.featureImportances());
 		//logger.info("Learned classification forest model: {}\n", rfModel.toDebugString());

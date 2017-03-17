@@ -484,7 +484,7 @@ public class AccountChecker {
 	
 	private static void lookupUserTimeline(Twitter twitter, UserProfile user) {
 		
-		int statusLimit = 50;
+		int statusLimit = 1000;
 		Paging page = new Paging(1, statusLimit);
 		
 		//If the user is protected we cannot retrieve their timeline.
