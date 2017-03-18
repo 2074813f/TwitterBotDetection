@@ -22,6 +22,7 @@ public class Features implements Serializable {
 	private int mainDeviceCount;
 	private String mainDevice;
 	private float tweetRate;
+	private int maxTweetRate;
 
 	public Features() {
 	}
@@ -92,5 +93,11 @@ public class Features implements Serializable {
 	}
 	public void setTweetRate(float tweetRate) {
 		this.tweetRate = tweetRate;
+	}
+	public int getMaxTweetRate() {
+		return maxTweetRate;
+	}
+	public void setMaxTweetRate(int maxTweetRate) {
+		this.maxTweetRate = maxTweetRate;
 	}
 }

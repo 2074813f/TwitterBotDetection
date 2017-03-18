@@ -192,6 +192,10 @@ public class FeatureExtractor {
 		float tweetRate = (tweetDates.values().stream().mapToInt(current -> current).sum() / (float) tweetDates.size());
 		features.setTweetRate(tweetRate);
 		
+		//Get the max tweet rate.
+		int maxTweetRate = tweetDates.values().stream().max(Integer::compare).get();
+		features.setMaxTweetRate(maxTweetRate);
+		
 		features.setMainDevice(highestDevice);
 		features.setMainDeviceCount(highestCount);
 		features.setUniqueDevices(clientDevices.size());

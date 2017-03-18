@@ -54,7 +54,7 @@ public class ProfileClassifier {
 		long seed = 207325481L;
 		logger.info("Training with seed: {}", seed);
 		
-		String[] rawFeatures = new String[]{"tweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "indexedMainDevice"};
+		String[] rawFeatures = new String[]{"tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "indexedMainDevice"};
 		//String[] rawFeatures = new String[]{"tweetRate"};
 		
 		/*
