@@ -54,7 +54,8 @@ public class ProfileClassifier {
 		long seed = 207325481L;
 		logger.info("Training with seed: {}", seed);
 		
-		String[] rawFeatures = new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "mainDeviceVec"};
+		String[] rawFeatures = new String[]{"tweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "indexedMainDevice"};
+		//String[] rawFeatures = new String[]{"tweetRate"};
 		
 		/*
 		 * Convert UserFeatures objects to Dataset<Row>, transforming features to
@@ -79,10 +80,10 @@ public class ProfileClassifier {
 		indexedData.show();
 		
 		//Convert label indices -> vectors to reduce bins
-		OneHotEncoder encoder = new OneHotEncoder()
-				.setInputCol("indexedMainDevice")
-				.setOutputCol("mainDeviceVec");
-		indexedData = encoder.transform(indexedData);
+//		OneHotEncoder encoder = new OneHotEncoder()
+//				.setInputCol("indexedMainDevice")
+//				.setOutputCol("mainDeviceVec");
+//		indexedData = encoder.transform(indexedData);
 		
 		// Assemble the features into a vector for classification.
 		VectorAssembler assembler = new VectorAssembler()
@@ -120,7 +121,7 @@ public class ProfileClassifier {
 		  .setLabelCol("indexedLabel")
 		  .setFeaturesCol("indexedFeatures")
 		  .setSeed(seed)
-		  .setMaxBins(30);
+		  .setMaxBins(280);
 	
 		// Convert indexed labels back to original labels.
 		IndexToString labelConverter = new IndexToString()
@@ -139,11 +140,11 @@ public class ProfileClassifier {
 		  .setMetricName("accuracy");
 		
 		/*
-		 * Tune 3 choices for numTrees, 3 for maxDepth, giving 3 x 3 grid = 
-		 * hence 9 parameter settings for CrossValidator to choose from.
+		 * Tune 2 choices for numTrees, 3 for maxDepth, giving 2 x 3 grid = 
+		 * hence 6 parameter settings for CrossValidator to choose from.
 		 */
 		ParamMap[] paramGrid = new ParamGridBuilder()
-				.addGrid(rf.numTrees(), new int[] {10, 100, 1000})
+				.addGrid(rf.numTrees(), new int[] {10, 100})
 				.addGrid(rf.maxDepth(), new int[] {rf.getMaxDepth(), 5, 10})
 				//TODO: Min info gain.
 				.build();

@@ -484,7 +484,7 @@ public class AccountChecker {
 	
 	private static void lookupUserTimeline(Twitter twitter, UserProfile user) {
 		
-		int statusLimit = 1000;
+		int statusLimit = 250;
 		Paging page = new Paging(1, statusLimit);
 		
 		//If the user is protected we cannot retrieve their timeline.
@@ -537,7 +537,7 @@ public class AccountChecker {
 					continue;
 				}
 				//Twitter overloaded, wait and retry.
-				else if (e.getStatusCode() == 503) {
+				else if (e.getStatusCode() == 503 || e.getStatusCode() == 429) {
 					logger.info("Twitter overloaded, pausing execution...");
 					
 					try {

@@ -21,6 +21,7 @@ public class Features implements Serializable {
 	private int uniqueDevices;
 	private int mainDeviceCount;
 	private String mainDevice;
+	private float tweetRate;
 
 	public Features() {
 	}
@@ -85,5 +86,11 @@ public class Features implements Serializable {
 	}
 	public void setMainDeviceCount(int mainDeviceCount) {
 		this.mainDeviceCount = mainDeviceCount;
+	}
+	public float getTweetRate() {
+		return tweetRate;
+	}
+	public void setTweetRate(float tweetRate) {
+		this.tweetRate = tweetRate;
 	}
 }

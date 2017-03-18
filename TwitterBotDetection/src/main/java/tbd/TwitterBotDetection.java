@@ -74,9 +74,9 @@ public class TwitterBotDetection {
 		//Build the classifier at construction time.
 		
 		//TODO: move to properties file.
-		String filename = "src/test/resources/labelled100.txt";
+		//String filename = "src/main/resources/labelled1000.txt";
 		//String filename = "D:\\Documents\\Uni_Work\\Level4_Project\\CraigsData\\cleangroundtruth.txt";
-        //String filename = "D:\\Documents\\Uni_Work\\Level4_Project\\ASONAM_honeypot_data\\ASONAM_honeypot_data\\honeypot.txt";
+        String filename = "D:\\Documents\\Uni_Work\\Level4_Project\\ASONAM_honeypot_data\\ASONAM_honeypot_data\\honeypot.txt";
 	
 		if (logger == null) System.exit(-1);
 
@@ -115,8 +115,10 @@ public class TwitterBotDetection {
 			
 			//FEATURE EXTRACTION
 			//Add all the features for each batch to the full set.
-			FeatureExtractor.extractFeatures(users);
-			features.addAll(users.stream().map(UserProfile::getFeatures).collect(Collectors.toList()));
+			if (!users.isEmpty() && users != null) {
+				FeatureExtractor.extractFeatures(users);
+				features.addAll(users.stream().map(UserProfile::getFeatures).collect(Collectors.toList()));
+			}
 		}
 		
 		//TODO: Change to each batch.

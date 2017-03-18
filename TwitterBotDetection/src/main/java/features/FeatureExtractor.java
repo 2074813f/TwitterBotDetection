@@ -123,11 +123,13 @@ public class FeatureExtractor {
 			features.setUniqueDevices(0);
 			features.setMainDeviceCount(0);
 			features.setMainDevice("NA");
+			features.setTweetRate(-1.0F);
 			return;
 		};
 		
 		int numStatusesWithURL = 0;
 		Map<String, Integer> clientDevices = new HashMap<String, Integer>();
+		Map<String, Integer> tweetDates = new HashMap<String, Integer>();
 		boolean linkSafety = true;
 		int numHashTags = 0;
 		int numMentions = 0;
@@ -146,7 +148,7 @@ public class FeatureExtractor {
 			numMentions += status.getUserMentionEntities().length;
 			
 			//TODO:Client Makeup (Most common)
-			//XXX:BUGFIX: does this actually increment????
+			//TODO: Consider hashing trick.
 			String device = status.getSource();
 			if (device != null && !device.equals("")) {
 				int count = clientDevices.containsKey(device) ? clientDevices.get(device) : 0;
@@ -156,8 +158,12 @@ public class FeatureExtractor {
 			//TODO: Temporal
 			//TODO: Consider Trimming tail and head days.
 			//TODO: Consider more efficient impl.
-			//Date createdAt = status.getCreatedAt();
-			
+			Date createdAt = status.getCreatedAt();
+			if (createdAt != null) {
+				String stringRepr = createdAt.toString();
+				int count = tweetDates.containsKey(stringRepr) ? tweetDates.get(stringRepr) : 0;
+				tweetDates.put(stringRepr, count + 1);
+			}
 		}
 		
 		//##### Extract features from raw status info #####
@@ -181,6 +187,10 @@ public class FeatureExtractor {
 				highestDevice = entry.getKey();
 			}
 		}
+		
+		//Average the tweets / day.
+		float tweetRate = (tweetDates.values().stream().mapToInt(current -> current).sum() / (float) tweetDates.size());
+		features.setTweetRate(tweetRate);
 		
 		features.setMainDevice(highestDevice);
 		features.setMainDeviceCount(highestCount);
