@@ -29,6 +29,7 @@ public class MainTest {
 	
 	static Twitter twitter;
 	
+	@Ignore
 	@Before
 	public void setUp() {
 		twitter = TwitterConfig.authTwitter();
@@ -52,30 +53,4 @@ public class MainTest {
 		NaiveBayesModel model = StatusClassifier.trainBayesClassifier(spark, users);
 		
 	}
-	
-	@Ignore
-	@Test
-	public void runApplicationWithCaching() {
-		List<LabelledUser> labelledUsers = DataCapture.readLabelledFile("src/test/resources/labelled10.txt");
-		assertTrue(labelledUsers.size() == 10);
-		
-		//TODO: use test redis server not production
-		RedisCommands<String, String> redisApi = RedisConfig.startRedis();
-		
-		List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, labelledUsers);
-		
-		//Create the spark session.
-		SparkSession spark = SparkSession
-				.builder()
-				.appName("Example")
-				.config("spark.master", "local")
-				.getOrCreate();
-		
-		NaiveBayesModel model = StatusClassifier.trainBayesClassifier(spark, users);
-		
-		//Purge and shutdown redis instance.
-		redisApi.flushall();
-		RedisConfig.stopRedis();
-	}
-
 }

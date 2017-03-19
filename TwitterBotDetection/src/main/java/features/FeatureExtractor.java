@@ -1,5 +1,6 @@
 package features;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -7,6 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -59,15 +62,13 @@ public class FeatureExtractor {
 		//	Account Health
 		//	Screen Name Length
 		features.setScreenNameLength(nameLength(user));
-		//TODO: protected
+		features.setIsProtected((user.getUser().isProtected()) == true ? 1.0f : 0.0f);
+		features.setIsVerified((user.getUser().isVerified()) == true ? 1.0f : 0.0f);
 		
 		//Content
 		//Network
 		//	#Following/#Followers
 		features.setFollowerRatio(followerRatio(user));
-		
-		//	%Bidirectional friends
-		//TODO: Tackle without getting rate limited.
 		
 		//History
 		//	Account Age / Account Registration Date
@@ -93,11 +94,21 @@ public class FeatureExtractor {
 	/**
 	 * Calculate the friend/follower ratio of a User.
 	 * 
+	 * the followerRatio is defined as:
+	 * 	followers / followers + friends
+	 * 
+	 * Where the values for followers have +1 to remove 0 division.
+	 * 
 	 * @param user
 	 * @return - the ratio as a float value.
 	 */
 	private static float followerRatio(UserProfile user) {
-		return ((float)user.getUser().getFriendsCount() + 1) / (user.getUser().getFollowersCount() + 1);
+		int friends = user.getUser().getFriendsCount();
+		int followers = user.getUser().getFollowersCount() + 1;
+		
+		float ratio = (float) followers / followers + friends;
+		
+		return ratio;
 	}
 	
 	/**
@@ -111,7 +122,7 @@ public class FeatureExtractor {
 	 */
 	private static void extractFromStatuses(Features features, UserProfile user) {
 		
-		List<Status> statusList = user.getTrainingStatuses();
+		List<Status> statusList = user.getUserTimeline();
 		int numStatuses = statusList.size();
 		
 		//If there are no statuses we cannot do work.
@@ -159,7 +170,7 @@ public class FeatureExtractor {
 				//TODO: Consider more efficient impl.
 				Date createdAt = status.getCreatedAt();
 				if (createdAt != null) {
-					String stringRepr = createdAt.toString();
+					String stringRepr = Long.toString(createdAt.getTime());
 					int count = tweetDates.containsKey(stringRepr) ? tweetDates.get(stringRepr) : 0;
 					tweetDates.put(stringRepr, count + 1);
 				}
@@ -187,18 +198,60 @@ public class FeatureExtractor {
 				}
 			}
 			
-			//Average the tweets / day.
-			float tweetRate = (tweetDates.values().stream().mapToInt(current -> current).sum() / (float) tweetDates.size());
+			features.setMainDevice(highestDevice);
+			features.setMainDeviceCount(highestCount);
+			features.setUniqueDevices(clientDevices.size());
+			
+			//TweetRate
+			float tweetRate = calcTweetRate(tweetDates);
 			features.setTweetRate(tweetRate);
 			
 			//Get the max tweet rate.
 			int maxTweetRate = tweetDates.values().stream().max(Integer::compare).get();
 			features.setMaxTweetRate(maxTweetRate);
 			
-			features.setMainDevice(highestDevice);
-			features.setMainDeviceCount(highestCount);
-			features.setUniqueDevices(clientDevices.size());
+			//Inter-arrival
+			List<Long> interArrivals = calcInterArrivals(tweetDates);
+			
+			//Mean IA
+			float meanIA = interArrivals.stream().count() / (float) interArrivals.size();
+			features.setMeanIA(meanIA);
 		}
+	}
+	
+	/**
+	 * Calculates the rate of tweeting/ status posting for a user,
+	 * defined as the mean of the number of tweets per day.
+	 * 
+	 * @param tweetDates - a map of {day, tweet_count}
+	 * @return - the rate of tweeting as a float.
+	 */
+	private static float calcTweetRate(Map<String, Integer> tweetDates) {
+		return (tweetDates.values().stream().mapToInt(i -> i).sum() / (float) tweetDates.size());
+	}
+	
+	/**
+	 * Calculates the inter-arrival of tweets, i.e. the
+	 * time between tweets.
+	 * 
+	 * @param tweetDates - a map of {day, tweet_count}
+	 * @return - a list with the inter-arrival for each pair of tweets
+	 */
+	private static List<Long> calcInterArrivals(Map<String, Integer> tweetDates) {
+		
+		Object[] dates = tweetDates.keySet().toArray();
+		List<Long> result = new ArrayList<Long>();
+		
+		for (int i=0; i<(tweetDates.size() - 1); i++) {
+			long first = Long.parseLong((String)dates[i]);
+			long second = Long.parseLong((String)dates[i+1]);
+			
+			long interArrival = second - first;
+			
+			result.add(interArrival);
+		}
+		
+		return result;
 	}
 
 }

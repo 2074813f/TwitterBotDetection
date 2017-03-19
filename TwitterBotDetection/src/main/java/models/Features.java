@@ -14,6 +14,8 @@ public class Features implements Serializable {
 	private String label;
 	
 	private int screenNameLength;		//Length of screen name
+	private float isProtected;
+	private float isVerified;
 	private float followerRatio;		//#Following/#Followers
 	private float urlRatio;
 	private float hashtagRatio;
@@ -23,6 +25,7 @@ public class Features implements Serializable {
 	private String mainDevice;
 	private float tweetRate;
 	private int maxTweetRate;
+	private float meanIA;				//Mean inter-arrival
 
 	public Features() {
 	}
@@ -99,5 +102,23 @@ public class Features implements Serializable {
 	}
 	public void setMaxTweetRate(int maxTweetRate) {
 		this.maxTweetRate = maxTweetRate;
+	}
+	public float getMeanIA() {
+		return meanIA;
+	}
+	public void setMeanIA(float meanIA) {
+		this.meanIA = meanIA;
+	}
+	public float getIsProtected() {
+		return isProtected;
+	}
+	public void setIsProtected(float isProtected) {
+		this.isProtected = isProtected;
+	}
+	public float getIsVerified() {
+		return isVerified;
+	}
+	public void setIsVerified(float isVerified) {
+		this.isVerified = isVerified;
 	}
 }

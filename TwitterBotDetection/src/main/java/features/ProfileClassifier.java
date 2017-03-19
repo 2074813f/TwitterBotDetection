@@ -44,7 +44,7 @@ public class ProfileClassifier {
 	
 	static Logger logger = LogManager.getLogger(TwitterBotDetection.class);
 	
-	static String[] rawFeatures = new String[]{"tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "indexedMainDevice"};
+	static String[] rawFeatures = new String[]{"isProtected", "isVerified", "meanIA", "tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "indexedMainDevice"};
 	
 	public static RandomForestClassificationModel train(SparkSession spark, List<Features> userFeatures) {
 

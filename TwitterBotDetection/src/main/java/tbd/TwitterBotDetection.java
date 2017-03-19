@@ -74,9 +74,9 @@ public class TwitterBotDetection {
 		//Build the classifier at construction time.
 		
 		//TODO: move to properties file.
-		String filename = "src/main/resources/labelled100.txt";
+		//String filename = "src/main/resources/labelled100.txt";
 		//String filename = "D:\\Documents\\Uni_Work\\Level4_Project\\CraigsData\\cleangroundtruth.txt";
-        //String filename = "D:\\Documents\\Uni_Work\\Level4_Project\\ASONAM_honeypot_data\\ASONAM_honeypot_data\\honeypot.txt";
+        String filename = "D:\\Documents\\Uni_Work\\Level4_Project\\ASONAM_honeypot_data\\ASONAM_honeypot_data\\honeypot.txt";
 	
 		if (logger == null) System.exit(-1);
 
