@@ -28,7 +28,7 @@ import org.apache.spark.mllib.evaluation.MulticlassMetrics;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Encoders;
-import org.apache.spark.sql.Row;import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
 import models.Features;
@@ -54,9 +54,9 @@ public class ProfileClassifier {
 		
 		long seed = 207325481L;
 		logger.info("Training with seed: {}", seed);
+		Long datetime = new Date().getTime();
 		
 		String[] rawFeatures = new String[]{"tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "indexedMainDevice"};
-		//String[] rawFeatures = new String[]{"tweetRate"};
 		
 		/*
 		 * Convert UserFeatures objects to Dataset<Row>, transforming features to
@@ -64,9 +64,6 @@ public class ProfileClassifier {
 		 */
 		Encoder<Features> featuresEncoder = Encoders.bean(Features.class);
 		Dataset<Features> rawData = spark.createDataset(features, featuresEncoder);
-		
-		//TODO: Should drop elements where we have no statuses before train..() called?
-		//rawData = rawData.filter(rawData.col("urlRatio").gt(0));
 		
 //		Map<String, String> mapping = new HashMap<String, String>();
 //		mapping.put("", "NA");
@@ -80,11 +77,18 @@ public class ProfileClassifier {
 		Dataset<Row> indexedData = sourceIndexer.transform(rawData);
 		indexedData.show();
 		
+		//Write the feature table to disk.
+		String featurePath = String.format("tmp/results/%s/features", datetime);
+		rawData.select("id", "label", "tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "mainDevice", "indexedMainDevice")
+			.write()
+			.option("header", "true")
+			.csv(featurePath);
+		
 		//Convert label indices -> vectors to reduce bins
-		OneHotEncoder encoder = new OneHotEncoder()
-				.setInputCol("indexedMainDevice")
-				.setOutputCol("mainDeviceVec");
-		indexedData = encoder.transform(indexedData);
+//		OneHotEncoder encoder = new OneHotEncoder()
+//				.setInputCol("indexedMainDevice")
+//				.setOutputCol("mainDeviceVec");
+//		indexedData = encoder.transform(indexedData);
 		
 		// Assemble the features into a vector for classification.
 		VectorAssembler assembler = new VectorAssembler()
@@ -169,19 +173,11 @@ public class ProfileClassifier {
 //		//results.show(false);
 		
 		//Write results of evaluation to disk.
-		Long datetime = new Date().getTime();
 		String resultPath = String.format("tmp/results/%s/results/", datetime);
 		predictions.select("id", "predictedLabel", "label")
 			.write()
 			.option("header", "true")
 			.csv(resultPath);
-		
-		//Write the feature table to disk.
-		String featurePath = String.format("tmp/results/%s/features", datetime);
-		predictions.select("tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "indexedMainDevice")
-			.write()
-			.option("header", "true")
-			.csv(featurePath);
 		
 		double accuracy = evaluator.evaluate(predictions);
 		logger.debug("Test Error = {}", (1.0 - accuracy));
