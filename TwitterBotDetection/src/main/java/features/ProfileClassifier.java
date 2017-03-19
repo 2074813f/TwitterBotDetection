@@ -2,6 +2,7 @@ package features;
 
 import tbd.TwitterBotDetection;
 
+import java.util.Date;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
@@ -27,7 +28,7 @@ import org.apache.spark.mllib.evaluation.MulticlassMetrics;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Encoders;
-import org.apache.spark.sql.Row;
+import org.apache.spark.sql.Row;import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.SparkSession;
 
 import models.Features;
@@ -80,10 +81,10 @@ public class ProfileClassifier {
 		indexedData.show();
 		
 		//Convert label indices -> vectors to reduce bins
-//		OneHotEncoder encoder = new OneHotEncoder()
-//				.setInputCol("indexedMainDevice")
-//				.setOutputCol("mainDeviceVec");
-//		indexedData = encoder.transform(indexedData);
+		OneHotEncoder encoder = new OneHotEncoder()
+				.setInputCol("indexedMainDevice")
+				.setOutputCol("mainDeviceVec");
+		indexedData = encoder.transform(indexedData);
 		
 		// Assemble the features into a vector for classification.
 		VectorAssembler assembler = new VectorAssembler()
@@ -168,12 +169,19 @@ public class ProfileClassifier {
 //		//results.show(false);
 		
 		//Write results of evaluation to disk.
-//		Long datetime = new Date().getTime();
-//		String path = String.format("src/main/resources/results/%s", "honeypot");
-//		results.select("id", "predictedLabel", "label")
-//			.write()
-//			.option("header", "true")
-//			.csv(path);
+		Long datetime = new Date().getTime();
+		String resultPath = String.format("tmp/results/%s/results/", datetime);
+		predictions.select("id", "predictedLabel", "label")
+			.write()
+			.option("header", "true")
+			.csv(resultPath);
+		
+		//Write the feature table to disk.
+		String featurePath = String.format("tmp/results/%s/features", datetime);
+		predictions.select("tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "indexedMainDevice")
+			.write()
+			.option("header", "true")
+			.csv(featurePath);
 		
 		double accuracy = evaluator.evaluate(predictions);
 		logger.debug("Test Error = {}", (1.0 - accuracy));
