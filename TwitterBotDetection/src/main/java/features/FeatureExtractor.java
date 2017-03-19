@@ -111,8 +111,7 @@ public class FeatureExtractor {
 	 */
 	private static void extractFromStatuses(Features features, UserProfile user) {
 		
-		List<Status> statusList = user.getUserTimeline();
-		
+		List<Status> statusList = user.getTrainingStatuses();
 		int numStatuses = statusList.size();
 		
 		//If there are no statuses we cannot do work.
@@ -124,81 +123,82 @@ public class FeatureExtractor {
 			features.setMainDeviceCount(0);
 			features.setMainDevice("NA");
 			features.setTweetRate(-1.0F);
-			return;
-		};
-		
-		int numStatusesWithURL = 0;
-		Map<String, Integer> clientDevices = new HashMap<String, Integer>();
-		Map<String, Integer> tweetDates = new HashMap<String, Integer>();
-		boolean linkSafety = true;
-		int numHashTags = 0;
-		int numMentions = 0;
-		
-		//##### Iterate and get raw features from statuses #####
-		for (Status status : statusList) {
-			//TODO:#Tweets with URLs / #Tweets
-			if (status.getURLEntities().length > 0) numStatusesWithURL++;
-			
-			//TODO:Link Safety
-			
-			//TODO:#Total Hashtags in Tweets / #Tweets
-			numHashTags += status.getHashtagEntities().length;
-			
-			//TODO:#Total Mentions in Tweets / #Tweets
-			numMentions += status.getUserMentionEntities().length;
-			
-			//TODO:Client Makeup (Most common)
-			//TODO: Consider hashing trick.
-			String device = status.getSource();
-			if (device != null && !device.equals("")) {
-				int count = clientDevices.containsKey(device) ? clientDevices.get(device) : 0;
-				clientDevices.put(device, count+1);
-			}
-			
-			//TODO: Temporal
-			//TODO: Consider Trimming tail and head days.
-			//TODO: Consider more efficient impl.
-			Date createdAt = status.getCreatedAt();
-			if (createdAt != null) {
-				String stringRepr = createdAt.toString();
-				int count = tweetDates.containsKey(stringRepr) ? tweetDates.get(stringRepr) : 0;
-				tweetDates.put(stringRepr, count + 1);
-			}
 		}
-		
-		//##### Extract features from raw status info #####
-		
-		//TODO:set feature fields.
-		features.setUrlRatio((float)numStatusesWithURL / numStatuses);
-		
-		features.setHashtagRatio((float)numHashTags / numStatuses);
-		
-		features.setMentionRatio((float)numMentions / numStatuses);
-		
-		//Find the most frequently used device
-		int highestCount = -1;
-		String highestDevice = "NA";
-		
-		for (Entry<String, Integer> entry : clientDevices.entrySet()) {
-			int currentValue = entry.getValue();
+		//Else process normally.
+		else {
+			int numStatusesWithURL = 0;
+			Map<String, Integer> clientDevices = new HashMap<String, Integer>();
+			Map<String, Integer> tweetDates = new HashMap<String, Integer>();
+			boolean linkSafety = true;
+			int numHashTags = 0;
+			int numMentions = 0;
 			
-			if (currentValue > highestCount) {
-				highestCount = currentValue;
-				highestDevice = entry.getKey();
+			//##### Iterate and get raw features from statuses #####
+			for (Status status : statusList) {
+				//TODO:#Tweets with URLs / #Tweets
+				if (status.getURLEntities().length > 0) numStatusesWithURL++;
+				
+				//TODO:Link Safety
+				
+				//TODO:#Total Hashtags in Tweets / #Tweets
+				numHashTags += status.getHashtagEntities().length;
+				
+				//TODO:#Total Mentions in Tweets / #Tweets
+				numMentions += status.getUserMentionEntities().length;
+				
+				//TODO:Client Makeup (Most common)
+				//TODO: Consider hashing trick.
+				String device = status.getSource();
+				if (device != null && !device.equals("")) {
+					int count = clientDevices.containsKey(device) ? clientDevices.get(device) : 0;
+					clientDevices.put(device, count+1);
+				}
+				
+				//TODO: Temporal
+				//TODO: Consider Trimming tail and head days.
+				//TODO: Consider more efficient impl.
+				Date createdAt = status.getCreatedAt();
+				if (createdAt != null) {
+					String stringRepr = createdAt.toString();
+					int count = tweetDates.containsKey(stringRepr) ? tweetDates.get(stringRepr) : 0;
+					tweetDates.put(stringRepr, count + 1);
+				}
 			}
+			
+			//##### Extract features from raw status info #####
+			
+			//TODO:set feature fields.
+			features.setUrlRatio((float)numStatusesWithURL / numStatuses);
+			
+			features.setHashtagRatio((float)numHashTags / numStatuses);
+			
+			features.setMentionRatio((float)numMentions / numStatuses);
+			
+			//Find the most frequently used device
+			int highestCount = -1;
+			String highestDevice = "NA";
+			
+			for (Entry<String, Integer> entry : clientDevices.entrySet()) {
+				int currentValue = entry.getValue();
+				
+				if (currentValue > highestCount) {
+					highestCount = currentValue;
+					highestDevice = entry.getKey();
+				}
+			}
+			
+			//Average the tweets / day.
+			float tweetRate = (tweetDates.values().stream().mapToInt(current -> current).sum() / (float) tweetDates.size());
+			features.setTweetRate(tweetRate);
+			
+			//Get the max tweet rate.
+			int maxTweetRate = tweetDates.values().stream().max(Integer::compare).get();
+			features.setMaxTweetRate(maxTweetRate);
+			
+			features.setMainDevice(highestDevice);
+			features.setMainDeviceCount(highestCount);
+			features.setUniqueDevices(clientDevices.size());
 		}
-		
-		//Average the tweets / day.
-		float tweetRate = (tweetDates.values().stream().mapToInt(current -> current).sum() / (float) tweetDates.size());
-		features.setTweetRate(tweetRate);
-		
-		//Get the max tweet rate.
-		int maxTweetRate = tweetDates.values().stream().max(Integer::compare).get();
-		features.setMaxTweetRate(maxTweetRate);
-		
-		features.setMainDevice(highestDevice);
-		features.setMainDeviceCount(highestCount);
-		features.setUniqueDevices(clientDevices.size());
 	}
 
 }

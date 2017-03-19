@@ -1,5 +1,5 @@
 package featureExtractionTests;
 
-public class FETest {
+public class FEtest {
 
 }

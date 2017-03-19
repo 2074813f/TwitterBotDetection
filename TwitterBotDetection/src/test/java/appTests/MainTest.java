@@ -24,6 +24,7 @@ import twitter4j.Twitter;
 import util.RedisConfig;
 import util.TwitterConfig;
 
+@Deprecated
 public class MainTest {
 	
 	static Twitter twitter;

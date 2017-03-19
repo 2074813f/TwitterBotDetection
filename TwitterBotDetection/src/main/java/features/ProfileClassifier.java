@@ -44,6 +44,8 @@ public class ProfileClassifier {
 	
 	static Logger logger = LogManager.getLogger(TwitterBotDetection.class);
 	
+	static String[] rawFeatures = new String[]{"tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "indexedMainDevice"};
+	
 	public static RandomForestClassificationModel train(SparkSession spark, List<Features> userFeatures) {
 
 		RandomForestClassificationModel model = trainRFClassifier(spark, userFeatures);
@@ -55,8 +57,6 @@ public class ProfileClassifier {
 		long seed = 207325481L;
 		logger.info("Training with seed: {}", seed);
 		Long datetime = new Date().getTime();
-		
-		String[] rawFeatures = new String[]{"tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "indexedMainDevice"};
 		
 		/*
 		 * Convert UserFeatures objects to Dataset<Row>, transforming features to
@@ -79,7 +79,7 @@ public class ProfileClassifier {
 		
 		//Write the feature table to disk.
 		String featurePath = String.format("tmp/results/%s/features", datetime);
-		rawData.select("id", "label", "tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "mainDevice", "indexedMainDevice")
+		indexedData.select("id", "label", "tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "mainDevice", "indexedMainDevice")
 			.write()
 			.option("header", "true")
 			.csv(featurePath);
@@ -204,8 +204,6 @@ public class ProfileClassifier {
 	
 	public static PipelineModel dataExtractor(SparkSession spark, List<Features> features) {
 		
-		String[] rawFeatures = new String[]{"screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceVec"};
-		
 		/*
 		 * Convert UserFeatures objects to Dataset<Row>, transforming features to
 		 * a Spark Vector.
@@ -225,12 +223,7 @@ public class ProfileClassifier {
 			.setOutputCol("indexedMainDevice");
 		//	.fit(rawData);
 		//Dataset<Row> indexedData = sourceIndexer.transform(rawData);
-		
-		//Convert label indices -> vectors to reduce bins
-		OneHotEncoder encoder = new OneHotEncoder()
-				.setInputCol("indexedMainDevice")
-				.setOutputCol("mainDeviceVec");
-		
+	
 		// Assemble the features into a vector for classification.
 		VectorAssembler assembler = new VectorAssembler()
 				.setInputCols(rawFeatures)
@@ -261,7 +254,7 @@ public class ProfileClassifier {
 	
 		// Chain indexers and forest in a Pipeline
 		PipelineModel pipeline = new Pipeline()
-		  .setStages(new PipelineStage[] {sourceIndexer, encoder, assembler, labelIndexer, featureIndexer})
+		  .setStages(new PipelineStage[] {sourceIndexer, assembler, labelIndexer, featureIndexer})
 		  .fit(rawData);
 
 		return pipeline;
