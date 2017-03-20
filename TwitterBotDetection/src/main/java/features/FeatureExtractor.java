@@ -134,6 +134,7 @@ public class FeatureExtractor {
 			features.setMainDeviceCount(0);
 			features.setMainDevice("NA");
 			features.setTweetRate(-1.0F);
+			features.setMeanIA(-1.0F);
 		}
 		//Else process normally.
 		else {
@@ -214,8 +215,14 @@ public class FeatureExtractor {
 			List<Long> interArrivals = calcInterArrivals(tweetDates);
 			
 			//Mean IA
-			float meanIA = interArrivals.stream().count() / (float) interArrivals.size();
-			features.setMeanIA(meanIA);
+			//If there is <=1 status then we will get no results for interArrivals and hence cant calc.
+			if (!interArrivals.isEmpty()) {
+				float meanIA = interArrivals.stream().count() / (float) interArrivals.size();
+				features.setMeanIA(meanIA);
+			}
+			else {
+				features.setMeanIA(-1.0F);
+			}
 		}
 	}
 	

@@ -2,7 +2,9 @@ package restTests;
 
 import static org.junit.Assert.*;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Properties;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Application;
@@ -27,7 +29,13 @@ public class ServerTest extends JerseyTest {
 	
 	@Before
 	public void setUpModels() throws IOException {
-		TwitterBotDetection.buildModels();
+		//Get the properties file.
+		Properties props = new Properties();
+		FileInputStream in = new FileInputStream("src/main/resources/config.properties");
+		props.load(in);
+		in.close();
+		
+		TwitterBotDetection.buildModels(props);
 	}
 	
 	@Override

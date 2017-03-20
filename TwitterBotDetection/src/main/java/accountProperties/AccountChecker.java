@@ -14,6 +14,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lambdaworks.redis.api.sync.RedisCommands;
 
+import caching.RedisCacher;
 import models.LabelledUser;
 import models.UserProfile;
 import serializer.UserProfileObjectMapper;
@@ -44,7 +45,7 @@ public class AccountChecker {
 	 * @throws RuntimeException 
 	 */
 	public static List<UserProfile> getUsers(Twitter twitter, 
-			RedisCommands<String, String> redisApi, List<LabelledUser> users) throws RuntimeException {
+			RedisCommands<String, String> redisApi, RedisCacher cacher, List<LabelledUser> users) throws RuntimeException {
 
 		//TODO: add param to fill statuses to the limit for each user, not just relying on those listed in the file.
 		
@@ -187,7 +188,7 @@ public class AccountChecker {
 		for (LabelledUser user : notFound) {
 			if (!newResult.containsKey(user.getUserId())) {
 				//Cache a null entry for this userid.
-				cacheNullRef(redisApi, "userprofile:"+user.getUserId());
+				cacher.cacheNullRef("userprofile:"+user.getUserId());
 			}
 		}
 		
@@ -220,7 +221,7 @@ public class AccountChecker {
 				//Add to redis.
 				//TODO: Exception on existence of key, should not be in store since earlier check.
 				try {
-					cacheObject(redisApi, userprofile);
+					cacher.cacheObject(userprofile);
 				} catch (JsonProcessingException e) {
 					logger.error("Failed to cache UserProfile object.");
 					e.printStackTrace();
@@ -559,58 +560,6 @@ public class AccountChecker {
 					throw new RuntimeException();
 				}
 			}
-		}
-	}
-
-	/**
-	 * Cache an object into a Redis server given a Redis API
-	 * Interface.
-	 * 
-	 * @param redisApi
-	 * @param o
-	 * @throws JsonProcessingException
-	 */
-	private static void cacheObject(RedisCommands<String, String> redisApi, Object o) throws JsonProcessingException {
-		//If object is a User...
-		if (o instanceof User) {
-			User user = (User) o;
-			String marshalledUser = mapper.writeValueAsString(user);
-			redisApi.set("user:"+user.getId(), marshalledUser);
-		}
-		//If object is a status...
-		else if (o instanceof Status) {
-			Status status = (Status) o;
-			String marshalledStatus = mapper.writeValueAsString(status);
-			redisApi.set("status:"+status.getId(), marshalledStatus);
-		}
-		//If object is a UserProfile...
-		else if (o instanceof UserProfile){
-			UserProfile user = (UserProfile) o;
-			String marshalledUserProfile = mapper.writeValueAsString(user);
-			redisApi.set("userprofile:"+user.getUser().getId(), marshalledUserProfile);
-		}
-		//Else don't know how to store.
-		else {
-			throw new RuntimeException(String.format("Don't know how to store %s object.", o.getClass().getName()));
-		}
-	}
-	
-	/**
-	 * Cache the String "null" against a given key, to indicate that the object
-	 * was not retrievable from Twitter, i.e. it was "looked-up" but not found.
-	 * 
-	 * @param redisApi - Redis instance API
-	 * @param key - the key 
-	 */
-	private static void cacheNullRef(RedisCommands<String, String> redisApi, String key) {
-		//TODO: identify object type automatically as with cacheObject and abstract key concat.
-		
-		//If we are given a reference as a key for Redis, then store.
-		if (key != null) {
-			redisApi.set(key, "null");
-		}
-		else {
-			throw new RuntimeException(String.format("Key cannot be null!"));
 		}
 	}
 }

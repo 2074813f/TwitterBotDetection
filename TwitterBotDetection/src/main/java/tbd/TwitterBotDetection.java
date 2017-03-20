@@ -1,8 +1,10 @@
 package tbd;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.core.UriBuilder;
@@ -18,9 +20,11 @@ import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lambdaworks.redis.api.sync.RedisCommands;
 
 import accountProperties.AccountChecker;
+import caching.RedisCacher;
 import features.FeatureExtractor;
 import features.ProfileClassifier;
 import models.Features;
@@ -60,9 +64,17 @@ public class TwitterBotDetection {
 	public static void main(String[] args) throws IOException {
 		
 		//TODO: consider registering hook: https://github.com/jersey/jersey/blob/master/examples/jaxb/src/main/java/org/glassfish/jersey/examples/jaxb/App.java
+		String pathToProperties = "src/main/resources/config.properties";
+		
+		//Get the properties file.
+		Properties props = new Properties();
+		FileInputStream in = new FileInputStream(pathToProperties);
+		props.load(in);
+		in.close();
+		logger.info("Loaded properties file: {}", pathToProperties);
 		
 		//Build the models.
-		buildModels();
+		buildModels(props);
 		
 		HttpServer server = startServer();
 		logger.info("Press any key to exit...");
@@ -70,14 +82,11 @@ public class TwitterBotDetection {
 		server.shutdownNow();
 	}
 	
-	public static void buildModels() throws IOException {
+	public static void buildModels(Properties props) throws IOException {
 		//Build the classifier at construction time.
+
+		String filename = props.getProperty("groundTruth");
 		
-		//TODO: move to properties file.
-		//String filename = "src/main/resources/labelled100.txt";
-		//String filename = "D:\\Documents\\Uni_Work\\Level4_Project\\CraigsData\\cleangroundtruth.txt";
-        String filename = "D:\\Documents\\Uni_Work\\Level4_Project\\ASONAM_honeypot_data\\ASONAM_honeypot_data\\honeypot.txt";
-	
 		if (logger == null) System.exit(-1);
 
 		//Get a twitter instance and attempt to authenticate with env variables.
@@ -86,8 +95,8 @@ public class TwitterBotDetection {
 		//Connect to the Redis server.
 		redisApi = RedisConfig.startRedis();
 		
-		//Read statuses from file.
-		//List<UserProfile> users = DataCapture.readStatusFile(args[0]);
+		//Create new cacher.
+		RedisCacher cacher = new RedisCacher(redisApi);
 		
 		//ENTITY COLLECTION
 		//FOR LABELLED
@@ -110,15 +119,41 @@ public class TwitterBotDetection {
 				index = labelledUsers.size();
 			}
 			
-			List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, toProcess);
+			List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, cacher, toProcess);
 			total += users.size();
 			
 			//FEATURE EXTRACTION
-			//Add all the features for each batch to the full set.
-			if (!users.isEmpty() && users != null) {
-				FeatureExtractor.extractFeatures(users);
-				features.addAll(users.stream().map(UserProfile::getFeatures).collect(Collectors.toList()));
+			//Get features for cached users.
+			List<UserProfile> requireExtraction = new ArrayList<UserProfile>();
+			for (UserProfile user : users) {
+				//If user not cached then add to the collection for extraction.
+				if (user.getFeatures() == null) {
+					requireExtraction.add(user);
+				}
+				//Else get features directly.
+				else {
+					features.add(user.getFeatures());
+				}
 			}
+			
+			//Add all the features for each batch to the full set.
+			if (!requireExtraction.isEmpty()) {
+				FeatureExtractor.extractFeatures(requireExtraction);
+				features.addAll(requireExtraction.stream().map(UserProfile::getFeatures).collect(Collectors.toList()));
+				
+				logger.info("Extracted features for {} UserProfiles.", requireExtraction.size());
+			}
+			
+//			//##### Cache the new Features #####
+//			for (UserProfile userprofile : requireExtraction) {
+//				//Add to redis.
+//				try {
+//					cacher.cacheObject(userprofile);
+//				} catch (JsonProcessingException e) {
+//					logger.error("Failed to cache UserProfile object.");
+//					e.printStackTrace();
+//				}
+//			}
 		}
 		
 		//TODO: Change to each batch.

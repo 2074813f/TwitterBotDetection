@@ -2,7 +2,9 @@ package modelTests;
 
 import static org.junit.Assert.*;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Properties;
 
 import org.apache.spark.ml.PipelineModel;
 import org.junit.Before;
@@ -18,7 +20,13 @@ public class PipelineModelTest {
 	
 	@Before
 	public void setUp() throws IOException {
-		TwitterBotDetection.buildModels();
+		//Get the properties file.
+		Properties props = new Properties();
+		FileInputStream in = new FileInputStream("src/main/resources/config.properties");
+		props.load(in);
+		in.close();
+		
+		TwitterBotDetection.buildModels(props);
 		
 		tbdResource = new TBDResource();
 	}
