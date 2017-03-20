@@ -14,7 +14,6 @@ import org.apache.spark.ml.classification.RandomForestClassificationModel;
 import org.apache.spark.ml.classification.RandomForestClassifier;
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator;
 import org.apache.spark.ml.feature.IndexToString;
-import org.apache.spark.ml.feature.OneHotEncoder;
 import org.apache.spark.ml.feature.StringIndexer;
 import org.apache.spark.ml.feature.StringIndexerModel;
 import org.apache.spark.ml.feature.VectorAssembler;
@@ -79,7 +78,7 @@ public class ProfileClassifier {
 		
 		//Write the feature table to disk.
 		String featurePath = String.format("tmp/results/%s/features", datetime);
-		indexedData.select("id", "label", "tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "mainDevice", "indexedMainDevice")
+		indexedData.select("id", "label", "isProtected", "isVerified", "meanIA", "tweetRate", "maxTweetRate", "screenNameLength", "followerRatio", "urlRatio", "hashtagRatio", "mentionRatio", "uniqueDevices", "mainDeviceCount", "mainDevice", "indexedMainDevice")
 			.write()
 			.option("header", "true")
 			.csv(featurePath);
@@ -149,8 +148,8 @@ public class ProfileClassifier {
 		 * hence 6 parameter settings for CrossValidator to choose from.
 		 */
 		ParamMap[] paramGrid = new ParamGridBuilder()
-				.addGrid(rf.numTrees(), new int[] {10, 100})
-				.addGrid(rf.maxDepth(), new int[] {rf.getMaxDepth(), 5, 10})
+				.addGrid(rf.numTrees(), new int[] {10, 100, 1})
+				.addGrid(rf.maxDepth(), new int[] {rf.getMaxDepth(), 5, 10, 1})
 				//TODO: Min info gain.
 				.build();
 		

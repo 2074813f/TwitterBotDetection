@@ -20,7 +20,6 @@ import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lambdaworks.redis.api.sync.RedisCommands;
 
 import accountProperties.AccountChecker;
@@ -76,10 +75,13 @@ public class TwitterBotDetection {
 		//Build the models.
 		buildModels(props);
 		
-		HttpServer server = startServer();
-		logger.info("Press any key to exit...");
-		System.in.read();
-		server.shutdownNow();
+		boolean serverRequired = Boolean.parseBoolean(props.getProperty("serverRequired"));
+		if (serverRequired) {
+			HttpServer server = startServer();
+			logger.info("Press any key to exit...");
+			System.in.read();
+			server.shutdownNow();
+		}
 	}
 	
 	public static void buildModels(Properties props) throws IOException {
@@ -94,9 +96,6 @@ public class TwitterBotDetection {
 		
 		//Connect to the Redis server.
 		redisApi = RedisConfig.startRedis();
-		
-		//Create new cacher.
-		RedisCacher cacher = new RedisCacher(redisApi);
 		
 		//ENTITY COLLECTION
 		//FOR LABELLED
@@ -119,7 +118,7 @@ public class TwitterBotDetection {
 				index = labelledUsers.size();
 			}
 			
-			List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, cacher, toProcess);
+			List<UserProfile> users = AccountChecker.getUsers(twitter, redisApi, new RedisCacher(redisApi), toProcess);
 			total += users.size();
 			
 			//FEATURE EXTRACTION
@@ -143,17 +142,6 @@ public class TwitterBotDetection {
 				
 				logger.info("Extracted features for {} UserProfiles.", requireExtraction.size());
 			}
-			
-//			//##### Cache the new Features #####
-//			for (UserProfile userprofile : requireExtraction) {
-//				//Add to redis.
-//				try {
-//					cacher.cacheObject(userprofile);
-//				} catch (JsonProcessingException e) {
-//					logger.error("Failed to cache UserProfile object.");
-//					e.printStackTrace();
-//				}
-//			}
 		}
 		
 		//TODO: Change to each batch.

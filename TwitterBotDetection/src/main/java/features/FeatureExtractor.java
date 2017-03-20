@@ -141,7 +141,8 @@ public class FeatureExtractor {
 			int numStatusesWithURL = 0;
 			Map<String, Integer> clientDevices = new HashMap<String, Integer>();
 			Map<String, Integer> tweetDates = new HashMap<String, Integer>();
-			boolean linkSafety = true;
+			List<Long> tweetTimes = new ArrayList<Long>();
+
 			int numHashTags = 0;
 			int numMentions = 0;
 			
@@ -171,9 +172,13 @@ public class FeatureExtractor {
 				//TODO: Consider more efficient impl.
 				Date createdAt = status.getCreatedAt();
 				if (createdAt != null) {
+					//Add or increment Date.
 					String stringRepr = Long.toString(createdAt.getTime());
 					int count = tweetDates.containsKey(stringRepr) ? tweetDates.get(stringRepr) : 0;
 					tweetDates.put(stringRepr, count + 1);
+					
+					//Add to list of times.
+					tweetTimes.add(createdAt.getTime());
 				}
 			}
 			
@@ -212,12 +217,12 @@ public class FeatureExtractor {
 			features.setMaxTweetRate(maxTweetRate);
 			
 			//Inter-arrival
-			List<Long> interArrivals = calcInterArrivals(tweetDates);
+			List<Long> interArrivals = calcInterArrivals(tweetTimes);
 			
 			//Mean IA
 			//If there is <=1 status then we will get no results for interArrivals and hence cant calc.
 			if (!interArrivals.isEmpty()) {
-				float meanIA = interArrivals.stream().count() / (float) interArrivals.size();
+				float meanIA = interArrivals.stream().mapToLong(i -> i).sum() / (float) interArrivals.size();
 				features.setMeanIA(meanIA);
 			}
 			else {
@@ -244,16 +249,15 @@ public class FeatureExtractor {
 	 * @param tweetDates - a map of {day, tweet_count}
 	 * @return - a list with the inter-arrival for each pair of tweets
 	 */
-	private static List<Long> calcInterArrivals(Map<String, Integer> tweetDates) {
+	private static List<Long> calcInterArrivals(List<Long> tweetTimes) {
 		
-		Object[] dates = tweetDates.keySet().toArray();
 		List<Long> result = new ArrayList<Long>();
 		
-		for (int i=0; i<(tweetDates.size() - 1); i++) {
-			long first = Long.parseLong((String)dates[i]);
-			long second = Long.parseLong((String)dates[i+1]);
+		for (int i=0; i<(tweetTimes.size() - 1); i++) {
+			long first = tweetTimes.get(i);
+			long second = tweetTimes.get(i+1);
 			
-			long interArrival = second - first;
+			long interArrival = first - second;
 			
 			result.add(interArrival);
 		}
