@@ -64,7 +64,7 @@ public class TBDResource {
 		pmodel = PipelineModel.load("tmp/pmodel");
 	}
 	
-	public String queryModel(long userid) {
+	public Result queryModel(long userid) {
 		//Get the user.
 		UserProfile user = AccountChecker.getUser(twitter, redisApi, userid);
 		user.setLabel("human");	//XXX
@@ -84,14 +84,17 @@ public class TBDResource {
 		Dataset<Features> rawData = spark.createDataset(features, featuresEncoder);
 		
 		//Transform the row to predict to a vector.
-		logger.info("Cleaning data for user: {}", userid);
+		logger.info("Transforming data for user: {}", userid);
 		Dataset<Row> cleanData = pmodel.transform(rawData);
 		Vector featureVector = cleanData.select("features").first().getAs("features");
 		
 		//Transform double -> String result, i.e. re-label.
-		String result = model.predict(featureVector) == 0.0 ? "human" : "bot";
+		Result result = new Result();
+		result.setLabel(model.predict(featureVector) == 0.0 ? "human" : "bot");
+		result.setFeatures(features.get(0));
+		result.setProbability(model.getImpurity());
 		
-		logger.info("Prediction for user={} : {}", userid, result);
+		logger.info("Prediction for user={} : {}", userid, result.getLabel());
 		return result;
 	}
 	

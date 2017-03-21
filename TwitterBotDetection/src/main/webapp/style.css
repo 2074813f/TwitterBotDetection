@@ -76,3 +76,27 @@ body {
     border-bottom: 0;
   }
 }
+
+/* d3 gauge styling*/
+.chart-gauge
+{
+  width: 400px;
+  margin: 100px auto
+ }
+.chart-filled
+{
+	fill: steelblue;
+}
+.chart-empty
+{
+	fill: #dedede;
+}
+
+.needle, .needle-center
+{
+	fill: #464A4F;
+}
+
+svg {
+  font: 10px sans-serif;
+}

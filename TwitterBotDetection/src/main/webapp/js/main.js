@@ -1,13 +1,14 @@
 $(document).ready(function(){
-    $("#get-data").click(function(){
 
-        $.getJSON("http://localhost:8080/rest/classify",
-        {
-            userid: "791455969016442881"
-        },
-        function(data) {
-            $("#data-userid").text('userid:'+data.userid);
-            $("#data-label").text('label:'+data.label);
-        })
+
+    //Initial page.
+    $("#content-div").load("home.html");
+
+    //Nav content loading.
+    $('ul#nav li a').click(function(){
+      var page = $(this).attr('href');
+      $("#content-div").load(page);
+
+      return false;
     });
 });

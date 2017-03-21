@@ -20,6 +20,7 @@ import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 
+import com.lambdaworks.redis.RedisConnectionException;
 import com.lambdaworks.redis.api.sync.RedisCommands;
 
 import accountProperties.AccountChecker;
@@ -95,7 +96,13 @@ public class TwitterBotDetection {
 		twitter = TwitterConfig.authTwitter();
 		
 		//Connect to the Redis server.
-		redisApi = RedisConfig.startRedis();
+		try {
+			redisApi = RedisConfig.startRedis();
+		}
+		catch (RedisConnectionException e) {
+			logger.error("Couldn't connect to Redis instance.");
+			System.exit(-1);
+		}
 		
 		//ENTITY COLLECTION
 		//FOR LABELLED

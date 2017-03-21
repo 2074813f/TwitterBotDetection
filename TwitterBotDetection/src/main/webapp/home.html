@@ -1,0 +1,106 @@
+<div class="jumbotron">
+    <h1>TBD</h1>
+
+    <p id="info-text" class="lead">Twitter Bot Detection is a project which aims to classify Twitter users, using a variety of techniques. To get a classification please
+    enter a valid Twitter userid below:</p>
+    <br/>
+
+  <div class="input-group">
+      <input id="input-data" type="text" class="form-control" placeholder="Search for ...">
+      <span class="input-group-btn">
+        <button id="get-data" class="btn btn-default lead" type="button">Classify!</button>
+      </span>
+  </div><!-- /input-group -->
+</div>
+
+<!-- Successful result block.-->
+<div id="result-div" class="col-lg-12 hide">
+  <div id="classification-div">
+    <h2>Classification</h2>
+    <ul>
+      <li id="data-userid"></li>
+      <li><strong id="data-label"></strong></li>
+    </ul>
+  </div>
+
+  <div id="classification-div">
+    <h2>Features</h2>
+    <ul>
+      <li id="data-screenNameLength"></li>
+      <li id="data-isProtected"></li>
+      <li id="data-isVerified"></li>
+      <li id="data-followerRatio"></li>
+      <li id="data-urlRatio"></li>
+      <li id="data-hashtagRatio"></li>
+      <li id="data-uniqueDevices"></li>
+      <li id="data-mainDeviceCount"></li>
+      <li id="data-mainDevice"></li>
+      <li id="data-tweetRate"></li>
+      <li id="data-maxTweetRate"></li>
+      <li id="data-meanIA"></li>
+    </ul>
+  </div>
+</div>
+
+<!-- Unsuccessful error block.-->
+<div id="error-div" class="col-lg-12 hide">
+</div>
+
+<script>
+  /*Flag indicating if at least 1 request has been seen*/
+  var seenLast = "null";
+
+  //Get function.
+  $("#get-data").click(function(){
+
+      var id = $('#input-data').val();
+
+      $.getJSON("http://localhost:8080/rest/classify",
+      {
+          userid: id
+      },
+      function(data) {
+          /*Setup handling of next request*/
+          if (seenLast == "fail") {
+            $("#error-div").addClass('hide');
+          }
+          seenLast = "success";
+
+          $("#data-userid").text('userid:'+data.userid);
+          $("#data-label").text('label:'+data.label);
+
+          $("#data-screenNameLength").text('screenNameLength:'+data.features.screenNameLength);
+          $("#data-isProtected").text('isProtected:'+data.features.isProtected);
+          $("#data-isVerified").text('isVerified:'+data.features.isVerified);
+          $("#data-followerRatio").text('followerRatio:'+data.features.followerRatio);
+          $("#data-urlRatio").text('urlRatio:'+data.features.urlRatio);
+          $("#data-hashtagRatio").text('hashtagRatio:'+data.features.hashtagRatio);
+          $("#data-uniqueDevices").text('uniqueDevices:'+data.features.uniqueDevices);
+          $("#data-mainDeviceCount").text('mainDeviceCount:'+data.features.mainDeviceCount);
+          $("#data-mainDevice").text('mainDevice:'+data.features.mainDevice);
+          $("#data-tweetRate").text('tweetRate:'+data.features.tweetRate);
+          $("#data-maxTweetRate").text('maxTweetRate:'+data.features.maxTweetRate);
+          $("#data-meanIA").text('meanIA:'+data.features.meanIA);
+
+          /*Show the result div*/
+          $("#result-div").removeClass('hide');
+
+          return false;
+      })
+      .fail(function(jqxhr, textStatus, error) {
+        /*Setup handling of next request*/
+        if (seenLast == "success") {
+          $("#result-div").addClass('hide');
+        }
+        seenLast = "fail";
+
+        var err = textStatus + ", " + error;
+        console.log( "Request Failed: " + err );
+
+        $("#error-div").text('Request Failed: ' + err);
+
+        /*Show the error div*/
+        $("#error-div").removeClass('hide');
+      })
+  });
+</script>

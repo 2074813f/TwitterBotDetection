@@ -20,7 +20,6 @@ import javax.ws.rs.core.Response;
 @Path("/rest")
 public class TBDService {
 	
-	//TODO: Construct resource class to provide interface for classifying etc.
 	TBDResource tbdResource = new TBDResource();
 	
 	@GET
@@ -30,14 +29,14 @@ public class TBDService {
 		//Response object.
 		UserClassification response = new UserClassification();
 		
-                long parsedUserid = Long.parseLong(userid);
-		String label = tbdResource.queryModel(parsedUserid);
+        long parsedUserid = Long.parseLong(userid);
+		Result result = tbdResource.queryModel(parsedUserid);
 		
 		//Set the fields in the response object.
 		response.setUserid(parsedUserid);
-		response.setLabel(label);
-		
-		//TODO: allow throwing errors to here and catch, respond with error status code.
+		response.setLabel(result.getLabel());
+		response.setFeatures(result.getFeatures());
+		response.setProbability(result.getProbability());
 		
 		return Response.ok(response).build();
 	}
