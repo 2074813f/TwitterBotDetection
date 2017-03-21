@@ -1,0 +1,131 @@
+<div id="problem-content" class="col-lg-12">
+  <h1>Problem Statement</h1>
+  <br/>
+
+  <ul>
+    <li id="classify-desc"> Users of the system should be able to provide a valid
+      twitter userId, and receive a classification for the User.</li>
+    <br/>
+    <li id="label-desc"> Users of the system should be able to submit corrections
+      to classifications for Users.</li>
+  </ul>
+
+  <hr/>
+</div>
+
+
+  <div id="resources-content" class="col-lg-12">
+    <h1>API Resources</h1>
+    <br/>
+
+    <div class="container">
+      <h2>classify(...)</h2>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>URI</td>
+            <td>/rest/classify?userid=<…></td>
+          </tr>
+          <tr>
+            <td>Method</td>
+            <td>GET</td>
+          </tr>
+          <tr>
+            <td>Description</td>
+            <td>Request a classification for the user with id given by the
+              parameter "userid". Returns a classification object iff the id is a
+               valid userid (i.e. the user exists and is accessible),
+               else returns null.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Example:</h4>
+      <code>http://localhost:8080/rest/classify?userid=791455969016442881</code>
+      <br/>
+      <br/>
+      <p>This requests a classification for the user with
+        userid=791455969016442881, returning a populated response object if the
+        user is successfully retrieved, or an HTTP error if not.</p>
+
+      <hr/>
+    </div>
+
+    <div class="container">
+      <h2>label(...)</h2>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>URI</td>
+            <td>/rest/label?userid=<…></td>
+          </tr>
+          <tr>
+            <td>Method</td>
+            <td>POST</td>
+          </tr>
+          <tr>
+            <td>Description</td>
+            <td>Provide a manual classification i.e. label for user with id
+              given by the parameter "userid". Returns null on success.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Example:</h4>
+      <code>http://localhost:8080/rest/label?userid=791455969016442881&label=human</code>
+      <br/>
+      <br/>
+      <p>This requests that the server recognize a manual classification for the
+         user with userid=791455969016442881, as a human user.</p>
+
+      <hr/>
+    </div>
+  </div>
+
+
+  <div id="models-content" class="col-lg-12">
+    <h1>Object Models</h1>
+    <br/>
+
+    <div class="container">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>UserClassification</th>
+          </tr>
+          <tr>
+            <th>Attribute</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>userid:long</td>
+            <td>The id of the user.</td>
+          </tr>
+          <tr>
+            <td>label:String</td>
+            <td>The classification of the user, i.e. "human" or "bot"</td>
+          </tr>
+          <tr>
+            <td>features:Object</td>
+            <td>Container for a number of "features" used in the classification
+              of the user by the system.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <hr/>
+    </div>
